@@ -24,9 +24,11 @@
 QMap<NumberFormat, QString> mapping({
         {NumberFormat_uint8, "uint8"},
         {NumberFormat_uint16, "uint16"},
+        {NumberFormat_uint24, "uint24"},
         {NumberFormat_uint32, "uint32"},
         {NumberFormat_int8, "int8"},
         {NumberFormat_int16, "int16"},
+        {NumberFormat_int24, "int24"},
         {NumberFormat_int32, "int32"},
         {NumberFormat_float, "float"},
         {NumberFormat_double, "double"}
@@ -40,4 +42,27 @@ QString numberFormatToStr(NumberFormat nf)
 NumberFormat strToNumberFormat(QString str)
 {
     return mapping.key(str, NumberFormat_INVALID);
+}
+
+unsigned numberFormatByteSize(NumberFormat nf)
+{
+    switch(nf) {
+    case NumberFormat_uint8:
+    case NumberFormat_int8:
+        return 1;
+    case NumberFormat_uint16:
+    case NumberFormat_int16:
+        return 2;
+    case NumberFormat_uint24:
+    case NumberFormat_int24:
+        return 3;
+    case NumberFormat_uint32:
+    case NumberFormat_int32:
+    case NumberFormat_float:
+        return 4;
+    case NumberFormat_double:
+        return 8;
+    default:
+        return 1;
+    }
 }

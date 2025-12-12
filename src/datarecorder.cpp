@@ -117,7 +117,9 @@ void DataRecorder::feedIn(const SamplePack& data)
 
 void DataRecorder::stopRecording()
 {
-    Q_ASSERT(file.isOpen());
+    if (!file.isOpen()) {
+        return; // Already stopped or never started
+    }
 
     file.close();
     lastNumChannels = 0;

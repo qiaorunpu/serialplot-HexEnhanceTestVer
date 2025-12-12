@@ -27,34 +27,44 @@
 
 #include "numberformatbox.h"
 #include "endiannessbox.h"
+#include "channelmapping.h"
+#include "checksumcalculator.h"
 
 namespace Ui {
 class FramedReaderSettings;
 }
+
+struct ChecksumConfig
+{
+    ChecksumAlgorithm algorithm;
+    unsigned startByte;
+    unsigned endByte;
+    bool enabled;
+    bool isLittleEndian;  // true for little endian, false for big endian
+
+    ChecksumConfig() : algorithm(ChecksumAlgorithm::None), startByte(0), endByte(0), enabled(false), isLittleEndian(true) {}
+};
 
 class FramedReaderSettings : public QWidget
 {
     Q_OBJECT
 
 public:
-    enum class SizeFieldType
-    {
-        Fixed, Field1Byte, Field2Byte
-    };
-
     explicit FramedReaderSettings(QWidget *parent = 0);
     ~FramedReaderSettings();
 
     void showMessage(QString message, bool error = false);
 
     unsigned numOfChannels();
-    NumberFormat numberFormat();
-    Endianness endianness();
     QByteArray syncWord();
-    SizeFieldType sizeFieldType() const;
     unsigned fixedFrameSize() const;
+    unsigned totalFrameLength() const;
     bool isChecksumEnabled();
     bool isDebugModeEnabled();
+    
+    ChannelMappingConfig& channelMapping();
+    ChecksumConfig& checksumConfig();
+    
     /// Save settings into a `QSettings`
     void saveSettings(QSettings* settings);
     /// Loads settings from a `QSettings`.
@@ -64,21 +74,29 @@ signals:
     /// If sync word is invalid (empty or 1 nibble missing at the end)
     /// signaled with an empty array
     void syncWordChanged(QByteArray);
-    /// 'size' field is only valid with 'Fixed' type
-    void sizeFieldChanged(SizeFieldType type, unsigned size);
-    /// `0` indicates frame size byte is enabled
     void fixedFrameSizeChanged(unsigned);
+    void totalFrameLengthChanged(unsigned);
     void checksumChanged(bool);
     void numOfChannelsChanged(unsigned);
-    void numberFormatChanged(NumberFormat);
     void debugModeChanged(bool);
+    void channelMappingChanged();
+    void checksumConfigChanged();
 
 private:
     Ui::FramedReaderSettings *ui;
     QButtonGroup fbGroup;
+    ChannelMappingConfig _channelMapping;
+    ChecksumConfig _checksumConfig;
+    
+private:
+    void updatePayloadSizeInternal();
 
 private slots:
     void onSyncWordEdited();
+    void onChannelMappingClicked();
+    void onChecksumConfigClicked();
+    void onTotalFrameLengthChanged();
+    void updatePayloadSize();
 };
 
 #endif // FRAMEDREADERSETTINGS_H

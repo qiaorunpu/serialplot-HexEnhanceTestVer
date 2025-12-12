@@ -6,238 +6,55 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>627</width>
-    <height>209</height>
+    <width>800</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout_2">
+  <layout class="QVBoxLayout" name="mainLayout">
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout">
+    <layout class="QHBoxLayout" name="timerLayout">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QLineEdit" name="leFileName">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="toolTip">
-          <string>You can use C `strftime` function format specifiers for timestamps in your file name.</string>
-         </property>
-         <property name="placeholderText">
-          <string>Enter file name or browse</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pbBrowse">
-         <property name="toolTip">
-          <string>Select record file</string>
-         </property>
-         <property name="text">
-          <string>Browse</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <widget class="QLabel" name="labelTimer">
+       <property name="text">
+        <string>Timer (seconds):</string>
+       </property>
+      </widget>
      </item>
      <item>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="2" column="1">
-        <widget class="QCheckBox" name="cbStopOnClose">
-         <property name="text">
-          <string>Stop recording when port closed</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QCheckBox" name="cbAutoIncrement">
-         <property name="toolTip">
-          <string>Increments file name automatically everytime a new recording starts</string>
-         </property>
-         <property name="text">
-          <string>Auto increment file name</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QCheckBox" name="cbDisableBuffering">
-         <property name="toolTip">
-          <string>Do not buffer when writing to file. Check this if you are using other software to open the file during recording.</string>
-         </property>
-         <property name="text">
-          <string>Disable buffering</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QCheckBox" name="cbWindowsLE">
-         <property name="toolTip">
-          <string>Use CR+LF as line endings. Some windows software may not show lines correctly otherwise. Can't be changed during recording.</string>
-         </property>
-         <property name="text">
-          <string>Windows Style Line Endings</string>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QCheckBox" name="cbHeader">
-         <property name="toolTip">
-          <string>Channel names are written to the first line of record file</string>
-         </property>
-         <property name="text">
-          <string>Write header line</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QCheckBox" name="cbRecordPaused">
-         <property name="toolTip">
-          <string>Continue recording to file even when plotting is paused</string>
-         </property>
-         <property name="text">
-          <string>Record while paused</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <spacer name="horizontalSpacer_2">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>1</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <item row="4" column="0">
-        <widget class="QCheckBox" name="cbTimestamp">
-         <property name="toolTip">
-          <string>Insert timestamp (milliseconds from epoch) as first column</string>
-         </property>
-         <property name="text">
-          <string>Insert timestamp</string>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <spacer name="horizontalSpacer_3">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>40</width>
-             <height>20</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-        </layout>
-       </item>
-      </layout>
+      <widget class="QSpinBox" name="spTimerSeconds">
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>86400</number>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+       <property name="toolTip">
+        <string>Recording duration in seconds. Set to 0 for continuous recording.</string>
+       </property>
+      </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Column Separator:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="leSeparator">
-         <property name="maximumSize">
-          <size>
-           <width>30</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="toolTip">
-          <string>For TAB character enter \t</string>
-         </property>
-         <property name="text">
-          <string>,</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Decimals:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSpinBox" name="spDecimals">
-         <property name="toolTip">
-          <string>Number of digits after comma</string>
-         </property>
-         <property name="value">
-          <number>6</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Timestamp In:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="cbTimestampFormat"/>
-       </item>
-       <item>
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
+      <widget class="QLabel" name="labelStatus">
+       <property name="text">
+        <string>(0 = continuous)</string>
+       </property>
+      </widget>
      </item>
      <item>
-      <spacer name="verticalSpacer">
+      <spacer name="horizontalSpacer_1">
        <property name="orientation">
-        <enum>Qt::Vertical</enum>
+        <enum>Qt::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>20</width>
-         <height>1</height>
+         <width>40</width>
+         <height>20</height>
         </size>
        </property>
       </spacer>
@@ -245,37 +62,317 @@
     </layout>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <widget class="QProgressBar" name="progressBar">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
+     <property name="value">
+      <number>0</number>
+     </property>
+     <property name="format">
+      <string>%v seconds</string>
+     </property>
+     <property name="textVisible">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonLayout">
      <item>
-      <widget class="QToolButton" name="pbRecord">
+      <widget class="QToolButton" name="pbStartOverwrite">
        <property name="minimumSize">
         <size>
-         <width>85</width>
-         <height>50</height>
+         <width>120</width>
+         <height>40</height>
         </size>
        </property>
-       <property name="toolTip">
-        <string>Start/Stop Recording</string>
-       </property>
        <property name="text">
-        <string>Record</string>
+        <string>Start: Overwrite</string>
+       </property>
+       <property name="toolTip">
+        <string>Start recording and overwrite existing files</string>
        </property>
       </widget>
      </item>
      <item>
-      <spacer name="verticalSpacer_2">
+      <widget class="QToolButton" name="pbStopCapture">
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Stop Capture</string>
+       </property>
+       <property name="toolTip">
+        <string>Stop recording to all files</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_2">
        <property name="orientation">
-        <enum>Qt::Vertical</enum>
+        <enum>Qt::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>20</width>
-         <height>1</height>
+         <width>40</width>
+         <height>20</height>
         </size>
        </property>
       </spacer>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBoxRawData">
+     <property name="title">
+      <string>Raw Binary Data</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+     <layout class="QVBoxLayout" name="rawDataLayout">
+      <item>
+       <layout class="QHBoxLayout" name="rawFileLayout">
+        <item>
+         <widget class="QLabel" name="labelRawFile">
+          <property name="text">
+           <string>Raw File:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="leRawFilename"/>
+        </item>
+        <item>
+         <widget class="QToolButton" name="pbBrowseRaw">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="rawOptionsLayout">
+        <item>
+         <widget class="QCheckBox" name="cbRawAutoInc">
+          <property name="text">
+           <string>Auto Increment</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cbRawDisableBuffering">
+          <property name="text">
+           <string>Disable Buffering</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBoxParsedData">
+     <property name="title">
+      <string>Parsed CSV Data</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+     <layout class="QVBoxLayout" name="parsedDataLayout">
+      <item>
+       <layout class="QHBoxLayout" name="csvFileLayout">
+        <item>
+         <widget class="QLabel" name="labelCsvFile">
+          <property name="text">
+           <string>CSV File:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="leCsvFilename"/>
+        </item>
+        <item>
+         <widget class="QToolButton" name="pbBrowseCsv">
+          <property name="text">
+           <string>...</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="csvOptionsGrid">
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="cbCsvAutoInc">
+          <property name="text">
+           <string>Auto Increment</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="cbWriteHeader">
+          <property name="text">
+           <string>Write Header</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="cbWindowsLineEnding">
+          <property name="text">
+           <string>Windows Line Endings</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="cbInsertTimestamp">
+          <property name="toolTip">
+           <string>Insert a timestamp column as first column</string>
+          </property>
+          <property name="text">
+           <string>Insert Timestamp</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="cbStopOnClose">
+          <property name="text">
+           <string>Stop On Close</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QCheckBox" name="cbRecordWhilePaused">
+          <property name="toolTip">
+           <string>Continue recording to file even if the plot is paused</string>
+          </property>
+          <property name="text">
+           <string>Record While Paused</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QCheckBox" name="cbCsvDisableBuffering">
+          <property name="text">
+           <string>Disable Buffering</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="csvFormatLayout">
+        <item>
+         <widget class="QLabel" name="labelSeparator">
+          <property name="text">
+           <string>Separator:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="leSeparator">
+          <property name="maximumSize">
+           <size>
+            <width>50</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>For TAB character enter \t</string>
+          </property>
+          <property name="text">
+           <string>,</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelDecimals">
+          <property name="text">
+           <string>Decimals:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spDecimals">
+          <property name="toolTip">
+           <string>Number of digits after comma</string>
+          </property>
+          <property name="value">
+           <number>6</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelTimestampFormat">
+          <property name="text">
+           <string>Timestamp In:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="cbTimestampFormat"/>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_4">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>1</height>
+      </size>
+     </property>
+    </spacer>
    </item>
   </layout>
  </widget>

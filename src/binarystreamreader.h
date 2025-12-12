@@ -60,6 +60,9 @@ private:
      */
     template<typename T> double readSampleAs();
 
+    double readSampleAsInt24();
+    double readSampleAsUint24();
+
     unsigned readData() override;
 
 private slots:

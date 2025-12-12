@@ -76,6 +76,7 @@ qt_add_executable(${PROGRAM_NAME} WIN32
   src/plotcontrolpanel.cpp
   src/recordpanel.cpp
   src/datarecorder.cpp
+  src/rawdatarecorder.cpp
   src/tooltipfilter.cpp
   src/sneakylineedit.cpp
   src/stream.cpp
@@ -98,6 +99,10 @@ qt_add_executable(${PROGRAM_NAME} WIN32
   src/demoreadersettings.cpp
   src/framedreader.cpp
   src/framedreadersettings.cpp
+  src/channelmapping.cpp
+  src/checksumcalculator.cpp
+  src/channelmappingdialog.cpp
+  src/checksumconfigdialog.cpp
   src/plotmanager.cpp
   src/plotmenu.cpp
   src/barplot.cpp
@@ -113,6 +118,7 @@ qt_add_executable(${PROGRAM_NAME} WIN32
   src/samplecounter.cpp
   src/ledwidget.cpp
   src/datatextview.cpp
+  src/rawdataview.cpp
   src/bpslabel.cpp
   misc/windows_icon.rc
   ${RES_FILES}

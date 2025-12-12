@@ -70,10 +70,22 @@ const char SG_CustomFrame_NumOfChannels[] = "numOfChannels";
 const char SG_CustomFrame_FrameStart[] = "frameStart";
 const char SG_CustomFrame_SizeFieldType[] = "fixedSize";
 const char SG_CustomFrame_FixedFrameSize[] = "frameSize";
+const char SG_CustomFrame_TotalFrameLength[] = "totalFrameLength";
 const char SG_CustomFrame_NumberFormat[] = "numberFormat";
 const char SG_CustomFrame_Endianness[] = "endianness";
 const char SG_CustomFrame_Checksum[] = "checksum";
+const char SG_CustomFrame_ChecksumAlgorithm[] = "checksumAlgorithm";
+const char SG_CustomFrame_ChecksumStartByte[] = "checksumStartByte";
+const char SG_CustomFrame_ChecksumEndByte[] = "checksumEndByte";
+const char SG_CustomFrame_ChecksumEndianness[] = "checksumEndianness";
 const char SG_CustomFrame_DebugMode[] = "debugMode";
+const char SG_CustomFrame_ChannelMapping[] = "channelMapping";
+const char SG_CustomFrame_Channel[] = "ch";
+const char SG_CustomFrame_ChannelByteOffset[] = "offset";
+const char SG_CustomFrame_ChannelByteLength[] = "length";
+const char SG_CustomFrame_ChannelFormat[] = "format";
+const char SG_CustomFrame_ChannelEndianness[] = "endianness";
+const char SG_CustomFrame_ChannelEnabled[] = "enabled";
 
 // channel info keys
 const char SG_Channels_Channel[] = "channel";

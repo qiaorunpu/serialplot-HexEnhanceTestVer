@@ -60,6 +60,7 @@ SOURCES += \
     src/plotcontrolpanel.cpp \
     src/recordpanel.cpp \
     src/datarecorder.cpp \
+    src/rawdatarecorder.cpp \
     src/tooltipfilter.cpp \
     src/sneakylineedit.cpp \
     src/stream.cpp \
@@ -81,6 +82,10 @@ SOURCES += \
     src/demoreadersettings.cpp \
     src/framedreader.cpp \
     src/framedreadersettings.cpp \
+    src/channelmapping.cpp \
+    src/checksumcalculator.cpp \
+    src/channelmappingdialog.cpp \
+    src/checksumconfigdialog.cpp \
     src/plotmanager.cpp \
     src/plotmenu.cpp \
     src/barplot.cpp \
@@ -96,6 +101,7 @@ SOURCES += \
     src/samplecounter.cpp \
     src/ledwidget.cpp \
     src/datatextview.cpp \
+    src/rawdataview.cpp \
     src/bpslabel.cpp
 
 HEADERS += \
@@ -137,12 +143,14 @@ HEADERS += \
     src/updatecheckdialog.h \
     src/demoreadersettings.h \
     src/datatextview.h \
+    src/rawdataview.h \
     src/bpslabel.h \
     src/barchart.h \
     src/barplot.h \
     src/barscaledraw.h \
     src/channelinfomodel.h \
     src/datarecorder.h \
+    src/rawdatarecorder.h \
     src/defines.h \
     src/indexbuffer.h \
     src/ledwidget.h \
@@ -160,7 +168,11 @@ HEADERS += \
     src/stream.h \
     src/version.h \
     src/versionnumber.h \
-    src/zoomer.h
+    src/zoomer.h \
+    src/channelmapping.h \
+    src/checksumcalculator.h \
+    src/channelmappingdialog.h \
+    src/checksumconfigdialog.h
 
 FORMS += \
     src/mainwindow.ui \
@@ -179,7 +191,9 @@ FORMS += \
     src/recordpanel.ui \
     src/updatecheckdialog.ui \
     src/demoreadersettings.ui \
-    src/datatextview.ui
+    src/datatextview.ui \
+    src/channelmappingdialog.ui \
+    src/checksumconfigdialog.ui
 
 INCLUDEPATH += qmake/ src/
 

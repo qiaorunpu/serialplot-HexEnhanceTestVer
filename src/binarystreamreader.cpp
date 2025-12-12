@@ -81,6 +81,14 @@ void BinaryStreamReader::onNumberFormatChanged(NumberFormat numberFormat)
             sampleSize = sizeof(qint16);
             readSample = &BinaryStreamReader::readSampleAs<qint16>;
             break;
+        case NumberFormat_uint24:
+            sampleSize = 3;
+            readSample = &BinaryStreamReader::readSampleAsUint24;
+            break;
+        case NumberFormat_int24:
+            sampleSize = 3;
+            readSample = &BinaryStreamReader::readSampleAsInt24;
+            break;
         case NumberFormat_uint32:
             sampleSize = sizeof(quint32);
             readSample = &BinaryStreamReader::readSampleAs<quint32>;
@@ -177,6 +185,60 @@ template<typename T> double BinaryStreamReader::readSampleAs()
     else
     {
         data = qFromBigEndian(data);
+    }
+
+    return double(data);
+}
+
+double BinaryStreamReader::readSampleAsUint24()
+{
+    quint32 data = 0;
+    quint8 buffer[3];
+
+    _device->read((char*) buffer, 3);
+
+    if (_settingsWidget.endianness() == LittleEndian)
+    {
+        // Little endian: LSB first
+        data = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16);
+    }
+    else
+    {
+        // Big endian: MSB first
+        data = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
+    }
+
+    return double(data);
+}
+
+double BinaryStreamReader::readSampleAsInt24()
+{
+    qint32 data = 0;
+    quint8 buffer[3];
+
+    _device->read((char*) buffer, 3);
+
+    if (_settingsWidget.endianness() == LittleEndian)
+    {
+        // Little endian: LSB first
+        data = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16);
+    }
+    else
+    {
+        // Big endian: MSB first
+        data = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
+    }
+
+    // Sign extension: convert 24-bit signed to 32-bit signed
+    if ((data & 0x800000) == 0x800000)
+    {
+        // If sign bit is set, extend with 1s
+        data = data | 0xFF000000;
+    }
+    else
+    {
+        // If sign bit is not set, mask to ensure upper byte is 0
+        data = data & 0x00FFFFFF;
     }
 
     return double(data);

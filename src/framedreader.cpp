@@ -19,46 +19,74 @@
 
 #include <QtDebug>
 #include <QtEndian>
+#include <QDateTime>
+#include <cstring>
 
 #include "framedreader.h"
 
 FramedReader::FramedReader(QIODevice* device, QObject* parent) :
-    AbstractReader(device, parent)
+    AbstractReader(device, parent),
+    _numChannels(1),
+    hasSizeByte(true),
+    isSizeField2B(false),
+    frameSize(64),
+    debugModeEnabled(false),
+    _settingsValid(false),
+    sync_i(0),
+    gotSync(false),
+    gotSize(false),
+    _frameBuffer(nullptr),
+    _frameBufferSize(0)
 {
     paused = false;
 
+    // Get channel mapping and checksum config first
+    _channelMapping = _settingsWidget.channelMapping();
+    _checksumConfig = _settingsWidget.checksumConfig();
+    
     // initial settings
-    settingsInvalid = 0;
     _numChannels = _settingsWidget.numOfChannels();
-    hasSizeByte = (_settingsWidget.sizeFieldType() != FramedReaderSettings::SizeFieldType::Fixed);
-    isSizeField2B = (_settingsWidget.sizeFieldType() == FramedReaderSettings::SizeFieldType::Field2Byte);
-    frameSize = _settingsWidget.fixedFrameSize();
+    hasSizeByte = false;  // Size field removed - frame format is now fixed
+    isSizeField2B = false;
     syncWord = _settingsWidget.syncWord();
-    checksumEnabled = _settingsWidget.isChecksumEnabled();
-    onNumberFormatChanged(_settingsWidget.numberFormat());
     debugModeEnabled = _settingsWidget.isDebugModeEnabled();
+    
+    // Calculate frame size: Total Frame Length - sync word - checksum
+    unsigned totalLength = _settingsWidget.totalFrameLength();
+    unsigned frameStartLength = syncWord.size();
+    unsigned checksumLength = _checksumConfig.enabled ? ChecksumCalculator::getOutputSize(_checksumConfig.algorithm) : 0;
+    int calculatedFrameSize = totalLength - frameStartLength - checksumLength;
+    frameSize = calculatedFrameSize > 0 ? calculatedFrameSize : 1;
+    // Endianness is now per-channel
+
+    // Allocate frame buffer
+    _frameBuffer = new uint8_t[65535];
+    _frameBufferSize = 65535;
+
     checkSettings();
 
     // init setting connections
-    connect(&_settingsWidget, &FramedReaderSettings::numberFormatChanged,
-            this, &FramedReader::onNumberFormatChanged);
-
     connect(&_settingsWidget, &FramedReaderSettings::numOfChannelsChanged,
             this, &FramedReader::onNumOfChannelsChanged);
 
     connect(&_settingsWidget, &FramedReaderSettings::syncWordChanged,
             this, &FramedReader::onSyncWordChanged);
 
-    connect(&_settingsWidget, &FramedReaderSettings::sizeFieldChanged,
-            this, &FramedReader::onSizeFieldChanged);
-
     connect(&_settingsWidget, &FramedReaderSettings::checksumChanged,
-            [this](bool enabled){checksumEnabled = enabled; reset();});
+            [this](bool enabled){ _checksumConfig.enabled = enabled; reset(); });
 
     connect(&_settingsWidget, &FramedReaderSettings::debugModeChanged,
-            [this](bool enabled){debugModeEnabled = enabled;});
+            [this](bool enabled){ debugModeEnabled = enabled; });
 
-    // init reader state
+    connect(&_settingsWidget, &FramedReaderSettings::channelMappingChanged,
+            this, &FramedReader::onChannelMappingChanged);
+
+    connect(&_settingsWidget, &FramedReaderSettings::checksumConfigChanged,
+            this, &FramedReader::onChecksumConfigChanged);
+    
+    connect(&_settingsWidget, &FramedReaderSettings::totalFrameLengthChanged,
+            this, &FramedReader::onTotalFrameLengthChanged);
+
     reset();
 }
 
@@ -72,95 +100,46 @@ unsigned FramedReader::numChannels() const
     return _numChannels;
 }
 
-void FramedReader::onNumberFormatChanged(NumberFormat numberFormat)
-{
-    switch(numberFormat)
-    {
-        case NumberFormat_uint8:
-            sampleSize = sizeof(quint8);
-            readSample = &FramedReader::readSampleAs<quint8>;
-            break;
-        case NumberFormat_int8:
-            sampleSize = sizeof(qint8);
-            readSample = &FramedReader::readSampleAs<qint8>;
-            break;
-        case NumberFormat_uint16:
-            sampleSize = sizeof(quint16);
-            readSample = &FramedReader::readSampleAs<quint16>;
-            break;
-        case NumberFormat_int16:
-            sampleSize = sizeof(qint16);
-            readSample = &FramedReader::readSampleAs<qint16>;
-            break;
-        case NumberFormat_uint32:
-            sampleSize = sizeof(quint32);
-            readSample = &FramedReader::readSampleAs<quint32>;
-            break;
-        case NumberFormat_int32:
-            sampleSize = sizeof(qint32);
-            readSample = &FramedReader::readSampleAs<qint32>;
-            break;
-        case NumberFormat_float:
-            sampleSize = sizeof(float);
-            readSample = &FramedReader::readSampleAs<float>;
-            break;
-        case NumberFormat_double:
-            sampleSize = sizeof(double);
-            readSample = &FramedReader::readSampleAs<double>;
-            break;
-        case NumberFormat_INVALID:
-            Q_ASSERT(1); // never
-            break;
-    }
-
-    checkSettings();
-    reset();
-}
-
 void FramedReader::checkSettings()
 {
-    // sync word is invalid (empty or missing a nibble at the end)
-    if (!syncWord.size())
+    if (debugModeEnabled)
+        qDebug() << "checkSettings: syncWord =" << syncWord.toHex()
+                 << "frameSize =" << frameSize;
+
+    // Validate sync word
+    if (syncWord.isEmpty())
     {
-        settingsInvalid |= SYNCWORD_INVALID;
-    }
-    else // sync word is valid
-    {
-        settingsInvalid &= ~SYNCWORD_INVALID;
+        _settingsValid = false;
+        _lastErrorMessage = "Frame Start is invalid!";
+        _settingsWidget.showMessage(_lastErrorMessage, true);
+        if (debugModeEnabled)
+            qDebug() << "Settings INVALID: Empty sync word";
+        return;
     }
 
-    // check if fixed frame size is multiple of a sample set size
-    if (!hasSizeByte && (frameSize % (_numChannels * sampleSize) != 0))
+    // Validate channel mappings (use total frame size including sync word)
+    QString errorMsg;
+    unsigned totalFrameSize = syncWord.size() + frameSize;
+    if (!_channelMapping.isValid(totalFrameSize, errorMsg))
     {
-        settingsInvalid |= FRAMESIZE_INVALID;
-    }
-    else
-    {
-        settingsInvalid &= ~FRAMESIZE_INVALID;
+        _settingsValid = false;
+        _lastErrorMessage = errorMsg;
+        _settingsWidget.showMessage(_lastErrorMessage, true);
+        if (debugModeEnabled)
+            qDebug() << "Settings INVALID: Channel mapping error -" << errorMsg;
+        return;
     }
 
-    // show an error message
-    if (settingsInvalid & SYNCWORD_INVALID)
-    {
-        _settingsWidget.showMessage("Frame Start is invalid!", true);
-    }
-    else if (settingsInvalid & FRAMESIZE_INVALID)
-    {
-        QString errorMessage =
-            QString("Payload size must be multiple of %1 (#channels * sample size)!")\
-            .arg(_numChannels * sampleSize);
-
-        _settingsWidget.showMessage(errorMessage, true);
-    }
-    else
-    {
-        _settingsWidget.showMessage("Settings are okay.");
-    }
+    _settingsValid = true;
+    _settingsWidget.showMessage("Settings are valid.");
+    if (debugModeEnabled)
+        qDebug() << "Settings are VALID";
 }
 
 void FramedReader::onNumOfChannelsChanged(unsigned value)
 {
     _numChannels = value;
+    _channelMapping.setNumChannels(value);
     checkSettings();
     reset();
     updateNumChannels();
@@ -170,195 +149,441 @@ void FramedReader::onNumOfChannelsChanged(unsigned value)
 void FramedReader::onSyncWordChanged(QByteArray word)
 {
     syncWord = word;
+    // Recalculate frameSize since sync word length may have changed
+    recalculateFrameSize();
     checkSettings();
     reset();
 }
 
-void FramedReader::onSizeFieldChanged(FramedReaderSettings::SizeFieldType fieldType, unsigned size)
+void FramedReader::onChannelMappingChanged()
 {
-    if (fieldType == FramedReaderSettings::SizeFieldType::Fixed)
-    {
-        hasSizeByte = false;
-        frameSize = size;
-    }
-    else
-    {
-        hasSizeByte = true;
-        isSizeField2B = (fieldType == FramedReaderSettings::SizeFieldType::Field2Byte);
-    }
-
+    _channelMapping = _settingsWidget.channelMapping();
+    // Recalculate frameSize in case it was affected by other changes
+    recalculateFrameSize();
     checkSettings();
     reset();
+}
+
+void FramedReader::onChecksumConfigChanged()
+{
+    _checksumConfig = _settingsWidget.checksumConfig();
+    // Recalculate frameSize since checkCode size may have changed
+    recalculateFrameSize();
+    checkSettings();
+    reset();
+}
+
+void FramedReader::onTotalFrameLengthChanged()
+{
+    // Recalculate frameSize when total frame length changes
+    recalculateFrameSize();
+    checkSettings();
+    reset();
+}
+
+void FramedReader::recalculateFrameSize()
+{
+    // Calculate frame size: Total Frame Length - sync word - checkCode
+    unsigned totalLength = _settingsWidget.totalFrameLength();
+    unsigned frameStartLength = syncWord.size();
+    unsigned checksumLength = _checksumConfig.enabled ? ChecksumCalculator::getOutputSize(_checksumConfig.algorithm) : 0;
+    int calculatedFrameSize = totalLength - frameStartLength - checksumLength;
+    frameSize = calculatedFrameSize > 0 ? calculatedFrameSize : 1;
+}
+
+void FramedReader::reset()
+{
+    if (debugModeEnabled)
+        qDebug() << "reset() called: resetting sync state";
+    sync_i = 0;
+    gotSync = false;
+    gotSize = false;
+    if (hasSizeByte) frameSize = 0;
+}
+
+double FramedReader::extractChannelValue(const ChannelMapping& ch, const uint8_t* buffer)
+{
+    // Buffer now contains complete frame (sync word + payload)
+    unsigned totalFrameSize = syncWord.size() + frameSize;
+    if (ch.byteOffset + ch.byteLength > totalFrameSize)
+        return 0.0;
+
+    const uint8_t* data = buffer + ch.byteOffset;
+    double value = 0.0;
+
+    switch (ch.numberFormat)
+    {
+        case NumberFormat_uint8:
+            value = double(*((quint8*)data));
+            break;
+        case NumberFormat_int8:
+            value = double(*((qint8*)data));
+            break;
+        case NumberFormat_uint16:
+        {
+            quint16 v;
+            std::memcpy(&v, data, 2);
+            if (ch.endianness == LittleEndian)
+                v = qFromLittleEndian(v);
+            else
+                v = qFromBigEndian(v);
+            value = double(v);
+            break;
+        }
+        case NumberFormat_int16:
+        {
+            qint16 v;
+            std::memcpy(&v, data, 2);
+            if (ch.endianness == LittleEndian)
+                v = qFromLittleEndian(v);
+            else
+                v = qFromBigEndian(v);
+            value = double(v);
+            break;
+        }
+        case NumberFormat_uint24:
+        {
+            quint32 v = 0;
+            if (ch.endianness == LittleEndian)
+            {
+                v = data[0] | (data[1] << 8) | (data[2] << 16);
+            }
+            else
+            {
+                v = (data[0] << 16) | (data[1] << 8) | data[2];
+            }
+            value = double(v);
+            break;
+        }
+        case NumberFormat_int24:
+        {
+            qint32 v = 0;
+            if (ch.endianness == LittleEndian)
+            {
+                v = data[0] | (data[1] << 8) | (data[2] << 16);
+            }
+            else
+            {
+                v = (data[0] << 16) | (data[1] << 8) | data[2];
+            }
+            // sign extend
+            if ((v & 0x800000) == 0x800000)
+                v = v | 0xFF000000;
+            else
+                v = v & 0x00FFFFFF;
+            value = double(v);
+            break;
+        }
+        case NumberFormat_uint32:
+        {
+            quint32 v;
+            std::memcpy(&v, data, 4);
+            if (ch.endianness == LittleEndian)
+                v = qFromLittleEndian(v);
+            else
+                v = qFromBigEndian(v);
+            value = double(v);
+            break;
+        }
+        case NumberFormat_int32:
+        {
+            qint32 v;
+            std::memcpy(&v, data, 4);
+            if (ch.endianness == LittleEndian)
+                v = qFromLittleEndian(v);
+            else
+                v = qFromBigEndian(v);
+            value = double(v);
+            break;
+        }
+        case NumberFormat_float:
+        {
+            float v;
+            std::memcpy(&v, data, 4);
+            if (ch.endianness == LittleEndian)
+                v = qFromLittleEndian(v);
+            else
+                v = qFromBigEndian(v);
+            value = double(v);
+            break;
+        }
+        case NumberFormat_double:
+        {
+            double v;
+            std::memcpy(&v, data, 8);
+            if (ch.endianness == LittleEndian)
+                v = qFromLittleEndian(v);
+            else
+                v = qFromBigEndian(v);
+            value = v;
+            break;
+        }
+        default:
+            value = 0.0;
+    }
+
+    return value;
+}
+
+uint32_t FramedReader::calculateFrameChecksum(const uint8_t* data, unsigned dataLength)
+{
+    if (!_checksumConfig.enabled)
+        return 0;
+
+    // Build complete frame data (sync word + payload) for checksum calculation
+    QByteArray completeFrame = syncWord;
+    completeFrame.append((const char*)data, dataLength);
+    
+    // Now use 0-based indexing on the complete frame
+    unsigned totalFrameLength = completeFrame.size();
+    unsigned startByte = _checksumConfig.startByte;
+    unsigned endByte = _checksumConfig.endByte;
+
+    // Clamp byte range to actual complete frame data
+    if (startByte >= totalFrameLength)
+        startByte = 0;
+    if (endByte >= totalFrameLength)
+        endByte = totalFrameLength - 1;
+
+    unsigned length = (endByte >= startByte) ? (endByte - startByte + 1) : 0;
+
+    if (length == 0)
+        return 0;
+
+    return ChecksumCalculator::calculate(_checksumConfig.algorithm, 
+                                       (const uint8_t*)completeFrame.data() + startByte, 
+                                       length);
+}
+
+void FramedReader::readFrameDataAndExtractChannels()
+{
+    if (paused)
+    {
+        _device->read(_frameBufferSize);
+        return;
+    }
+
+    // Read complete frame data including sync word
+    // First, put sync word at the beginning of buffer
+    std::memcpy(_frameBuffer, syncWord.data(), syncWord.size());
+    
+    // Then read payload data after sync word
+    if (debugModeEnabled)
+        qDebug() << "Reading frame data: frameSize=" << frameSize 
+                 << "totalFrameLength=" << _settingsWidget.totalFrameLength()
+                 << "syncWordSize=" << syncWord.size();
+    _device->read((char*)_frameBuffer + syncWord.size(), frameSize);
+
+    // Verify checksum if enabled
+    if (_checksumConfig.enabled)
+    {
+        // Read checksum from device
+        unsigned checksumSize = ChecksumCalculator::getOutputSize(_checksumConfig.algorithm);
+        uint8_t receivedChecksum[4] = {0};
+        _device->read((char*)receivedChecksum, checksumSize);
+
+        // Calculate expected checksum (only for payload data, skip sync word)
+        uint32_t expectedChecksum = calculateFrameChecksum(_frameBuffer + syncWord.size(), frameSize);
+
+        // Compare (handle different sizes and endianness)
+        bool checksumOk = true;
+        for (unsigned i = 0; i < checksumSize; i++)
+        {
+            uint8_t expected;
+            if (_checksumConfig.isLittleEndian)
+            {
+                // Little endian: LSB first
+                expected = (expectedChecksum >> (i * 8)) & 0xFF;
+            }
+            else
+            {
+                // Big endian: MSB first
+                expected = (expectedChecksum >> ((checksumSize - 1 - i) * 8)) & 0xFF;
+            }
+            
+            if (receivedChecksum[i] != expected)
+            {
+                checksumOk = false;
+                break;
+            }
+        }
+
+        if (!checksumOk)
+        {
+            // Format timestamp as YYYY:MM:DD HH:MM:SS
+            QString timestamp = QDateTime::currentDateTime().toString("yyyy:MM:dd HH:mm:ss");
+            
+            // Format received checksum value
+            QString receivedStr;
+            for (unsigned i = 0; i < checksumSize; i++)
+            {
+                if (i > 0) receivedStr += " ";
+                receivedStr += QString("0x%1").arg(receivedChecksum[i], 2, 16, QChar('0')).toUpper();
+            }
+            
+            // Format calculated checksum value (respecting configured endianness)
+            QString calculatedStr;
+            for (unsigned i = 0; i < checksumSize; i++)
+            {
+                if (i > 0) calculatedStr += " ";
+                uint8_t calculatedByte;
+                if (_checksumConfig.isLittleEndian)
+                {
+                    // Little endian: LSB first
+                    calculatedByte = (expectedChecksum >> (i * 8)) & 0xFF;
+                }
+                else
+                {
+                    // Big endian: MSB first
+                    calculatedByte = (expectedChecksum >> ((checksumSize - 1 - i) * 8)) & 0xFF;
+                }
+                calculatedStr += QString("0x%1").arg(calculatedByte, 2, 16, QChar('0')).toUpper();
+            }
+            
+            if (debugModeEnabled)
+            {
+                qCritical() << timestamp << "CheckCode failed! Received:" << receivedStr 
+                           << "Calculated:" << calculatedStr;
+                
+                // Provide additional diagnostic information
+                QString endianStr = _checksumConfig.isLittleEndian ? "Little Endian" : "Big Endian";
+                qCritical() << "Frame size:" << frameSize << "bytes, CheckCode algorithm:" 
+                           << ChecksumCalculator::algorithmToString(_checksumConfig.algorithm)
+                           << "Byte order:" << endianStr;
+            }
+            return;
+        }
+    }
+
+    // Extract channels
+    SamplePack samples(_numChannels > 0 ? 1 : 0, _numChannels);
+
+    for (unsigned i = 0; i < _numChannels; i++)
+    {
+        const ChannelMapping& ch = _channelMapping.channel(i);
+        if (ch.enabled)
+        {
+            samples.data(i)[0] = extractChannelValue(ch, _frameBuffer);
+        }
+    }
+
+    feedOut(samples);
 }
 
 unsigned FramedReader::readData()
 {
     unsigned numBytesRead = 0;
+    
+    if (debugModeEnabled && _device->bytesAvailable() > 0)
+        qDebug() << "readData: bytes available =" << _device->bytesAvailable() 
+                 << "gotSync =" << gotSync << "frameSize =" << frameSize;
 
-    if (settingsInvalid) return numBytesRead;
+    if (!_settingsValid)
+    {
+        if (debugModeEnabled)
+            qDebug() << "readData: Settings invalid, skipping data read";
+        return numBytesRead;
+    }
 
-    // loop until we run out of bytes or more bytes is required
     unsigned bytesAvailable;
     while ((bytesAvailable = _device->bytesAvailable()))
     {
-        if (!gotSync) // read sync word
+        if (!gotSync)
         {
+            // Read sync word
             char c;
             _device->getChar(&c);
             numBytesRead++;
-            if (c == syncWord[sync_i]) // correct sync byte?
+
+            if (debugModeEnabled)
+                qDebug() << "Sync check: received byte" << QString("0x%1").arg((uint8_t)c, 2, 16, QChar('0')).toUpper() 
+                         << "expected" << QString("0x%1").arg((uint8_t)syncWord[sync_i], 2, 16, QChar('0')).toUpper()
+                         << "position" << sync_i;
+
+            if (c == syncWord[sync_i])
             {
                 sync_i++;
-                if (sync_i == (unsigned) syncWord.length())
+                if (sync_i == (unsigned)syncWord.length())
                 {
                     gotSync = true;
+                    if (debugModeEnabled)
+                        qDebug() << "Sync word found";
                 }
             }
             else
             {
-                if (debugModeEnabled) qCritical() << "Missed " << sync_i+1 << "th sync byte.";
+                if (debugModeEnabled && sync_i > 0)
+                    qCritical() << "Missed sync byte at position" << sync_i;
+                sync_i = 0;
             }
         }
-        else if (hasSizeByte && !gotSize) // skipped if fixed frame size
+        else if (hasSizeByte && !gotSize)
         {
-            // read size field (1 or 2 bytes)
+            // Read size field
             if (isSizeField2B)
             {
                 if (bytesAvailable < 2) break;
 
                 uint16_t frameSize16 = 0;
-                _device->read((char*) &frameSize16, sizeof(frameSize16));
-                numBytesRead += sizeof(frameSize16);
+                _device->read((char*)&frameSize16, 2);
+                numBytesRead += 2;
 
-                if (_settingsWidget.endianness() == LittleEndian)
-                {
-                    frameSize = qFromLittleEndian(frameSize16);
-                }
-                else
-                {
-                    frameSize = qFromBigEndian(frameSize16);
-                }
+                // Default to little endian since size fields are removed
+                frameSize = qFromLittleEndian(frameSize16);
             }
             else
             {
                 frameSize = 0;
-                _device->getChar((char*) &frameSize);
+                _device->getChar((char*)&frameSize);
                 numBytesRead++;
             }
 
-            // validate the size field
             if (frameSize == 0)
             {
-                qCritical() << "Frame size is read as 0!";
+                if (debugModeEnabled)
+                    qCritical() << "Frame size is 0!";
                 reset();
             }
-            else if (frameSize % (_numChannels * sampleSize) != 0)
+            else if (frameSize > _frameBufferSize)
             {
-                qCritical() <<
-                    QString("Payload size is not multiple of %1 (#channels * sample size)!") \
-                    .arg(_numChannels * sampleSize);
+                if (debugModeEnabled)
+                    qCritical() << "Frame size" << frameSize << "exceeds buffer!";
                 reset();
             }
             else
             {
-                if (debugModeEnabled) qDebug() << "Payload size:" << frameSize;
+                if (debugModeEnabled)
+                    qDebug() << "Frame size:" << frameSize;
                 gotSize = true;
             }
         }
-        else // read data bytes
+        else
         {
-            // have enough data bytes? (+1 for checksum)
-            if (bytesAvailable < (checksumEnabled ? frameSize+1 : frameSize))
+            // Read payload
+            unsigned checksumSize = _checksumConfig.enabled ? 
+                ChecksumCalculator::getOutputSize(_checksumConfig.algorithm) : 0;
+            unsigned totalFrameSize = frameSize + checksumSize;
+
+            if (debugModeEnabled)
+                qDebug() << "Ready to read payload: frameSize =" << frameSize 
+                         << "checksumSize =" << checksumSize 
+                         << "totalFrameSize =" << totalFrameSize
+                         << "bytesAvailable =" << bytesAvailable;
+
+            if (bytesAvailable < totalFrameSize)
             {
+                if (debugModeEnabled)
+                    qDebug() << "Not enough bytes available, waiting...";
                 break;
             }
-            else // read data bytes and checksum
-            {
-                readFrameDataAndCheck();
-                numBytesRead += checksumEnabled ? frameSize+1 : frameSize;
-                reset();
-            }
+
+            readFrameDataAndExtractChannels();
+            numBytesRead += totalFrameSize;
+            reset();
         }
     }
 
     return numBytesRead;
-}
-
-void FramedReader::reset()
-{
-    sync_i = 0;
-    gotSync = false;
-    gotSize = false;
-    if (hasSizeByte) frameSize = 0;
-    calcChecksum = 0;
-}
-
-// Important: this function assumes device has enough bytes to read a full frames data and checksum
-void FramedReader::readFrameDataAndCheck()
-{
-    // if paused just read and waste data
-    if (paused)
-    {
-        _device->read(checksumEnabled ? frameSize+1 : frameSize);
-        return;
-    }
-
-    // a package is 1 set of samples for all channels
-    unsigned numOfPackagesToRead = frameSize / (_numChannels * sampleSize);
-    SamplePack samples(numOfPackagesToRead, _numChannels);
-    for (unsigned i = 0; i < numOfPackagesToRead; i++)
-    {
-        for (unsigned int ci = 0; ci < _numChannels; ci++)
-        {
-            samples.data(ci)[i] = (this->*readSample)();
-        }
-    }
-
-    // read checksum
-    unsigned rChecksum = 0;
-    bool checksumPassed = false;
-    if (checksumEnabled)
-    {
-        _device->read((char*) &rChecksum, 1);
-        calcChecksum &= 0xFF;
-        checksumPassed = (calcChecksum == rChecksum);
-    }
-
-    if (!checksumEnabled || checksumPassed)
-    {
-        // commit data
-        feedOut(samples);
-    }
-    else
-    {
-        qCritical() << "Checksum failed! Received:" << rChecksum << "Calculated:" << calcChecksum;
-    }
-}
-
-template<typename T> double FramedReader::readSampleAs()
-{
-    T data;
-
-    _device->read((char*) &data, sizeof(data));
-
-    if (checksumEnabled)
-    {
-        for (unsigned i = 0; i < sizeof(data); i++)
-        {
-            calcChecksum += ((unsigned char*) &data)[i];
-        }
-    }
-
-    if (_settingsWidget.endianness() == LittleEndian)
-    {
-        data = qFromLittleEndian(data);
-    }
-    else
-    {
-        data = qFromBigEndian(data);
-    }
-
-    return double(data);
 }
 
 void FramedReader::saveSettings(QSettings* settings)
@@ -369,4 +594,25 @@ void FramedReader::saveSettings(QSettings* settings)
 void FramedReader::loadSettings(QSettings* settings)
 {
     _settingsWidget.loadSettings(settings);
+    
+    // Get channel mapping and checksum config first
+    _channelMapping = _settingsWidget.channelMapping();
+    _checksumConfig = _settingsWidget.checksumConfig();
+    
+    // Reload from settings widget
+    _numChannels = _settingsWidget.numOfChannels();
+    hasSizeByte = false;  // Size field removed - frame format is now fixed
+    isSizeField2B = false;
+    syncWord = _settingsWidget.syncWord();
+    debugModeEnabled = _settingsWidget.isDebugModeEnabled();
+    
+    // Calculate frame size: Total Frame Length - sync word - checksum
+    unsigned totalLength = _settingsWidget.totalFrameLength();
+    unsigned frameStartLength = syncWord.size();
+    unsigned checksumLength = _checksumConfig.enabled ? ChecksumCalculator::getOutputSize(_checksumConfig.algorithm) : 0;
+    int calculatedFrameSize = totalLength - frameStartLength - checksumLength;
+    frameSize = calculatedFrameSize > 0 ? calculatedFrameSize : 1;
+    // Endianness is now per-channel
+    
+    checkSettings();
 }

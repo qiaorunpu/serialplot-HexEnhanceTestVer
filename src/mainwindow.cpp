@@ -19,6 +19,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "rawdatarecorder.h"
 #include <QByteArray>
 #include <QApplication>
 #include <QFileDialog>
@@ -73,11 +74,19 @@ MainWindow::MainWindow(QWidget *parent) :
     recordPanel(&stream),
     textView(&stream),
     updateCheckDialog(this),
-    bpsLabel(&portControl, &dataFormatPanel, this)
+    bpsLabel(&portControl, &dataFormatPanel, this),
+    activeRawRecorder(nullptr)
 {
     ui->setupUi(this);
 
     plotMan = new PlotManager(ui->plotArea, &plotMenu, &stream);
+
+    // Configure the main splitter for better default proportions
+    ui->mainSplitter->setStretchFactor(0, 3); // Plot area gets more space
+    ui->mainSplitter->setStretchFactor(1, 1); // Tab widget gets less space
+    
+    // Set splitter handle width for better usability  
+    ui->mainSplitter->setHandleWidth(4);
 
     ui->tabWidget->insertTab(0, &portControl, "Port");
     ui->tabWidget->insertTab(1, &dataFormatPanel, "Data Format");
@@ -126,13 +135,13 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionVertical, &QAction::triggered,
             [this](bool checked)
             {
-                if (checked) ui->splitter->setOrientation(Qt::Vertical);
+                if (checked) ui->plotSplitter->setOrientation(Qt::Vertical);
             });
 
     connect(ui->actionHorizontal, &QAction::triggered,
             [this](bool checked)
             {
-                if (checked) ui->splitter->setOrientation(Qt::Horizontal);
+                if (checked) ui->plotSplitter->setOrientation(Qt::Horizontal);
             });
 
     // Help menu signals
@@ -266,6 +275,36 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&dataFormatPanel, &DataFormatPanel::sourceChanged,
             this, &MainWindow::onSourceChanged);
     onSourceChanged(dataFormatPanel.activeSource());
+
+
+
+    // Connect to serial port for raw data handling
+    connect(&serialPort, &QIODevice::readyRead, [this]() {
+        if (serialPort.isOpen()) {
+            // Peek at data without consuming it for raw data display and recording
+            QByteArray data = serialPort.peek(serialPort.bytesAvailable());
+            if (!data.isEmpty()) {
+                commandPanel.getRawDataView()->addReceivedData(data);
+                // Also send to raw data recorder if recording
+                if (activeRawRecorder && activeRawRecorder->isRecording()) {
+                    activeRawRecorder->onDataReceived(data);
+                }
+            }
+        }
+    });
+
+    // Connect raw recording signals from record panel
+    connect(&recordPanel, &RecordPanel::rawRecordingStarted,
+            [this](RawDataRecorder* recorder) {
+                activeRawRecorder = recorder;
+            });
+    
+    connect(&recordPanel, &RecordPanel::rawRecordingStopped,
+            [this](RawDataRecorder* recorder) {
+                if (activeRawRecorder == recorder) {
+                    activeRawRecorder = nullptr;
+                }
+            });
 
     // load default settings
     QSettings settings(PROGRAM_NAME, PROGRAM_NAME);
@@ -439,9 +478,9 @@ void MainWindow::showSecondary(QWidget* wid)
     }
 
     secondaryPlot = wid;
-    ui->splitter->addWidget(wid);
-    ui->splitter->setStretchFactor(0, 1);
-    ui->splitter->setStretchFactor(1, 0);
+    ui->plotSplitter->addWidget(wid);
+    ui->plotSplitter->setStretchFactor(0, 1);
+    ui->plotSplitter->setStretchFactor(1, 0);
 }
 
 void MainWindow::hideSecondary()

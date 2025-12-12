@@ -29,6 +29,7 @@
 #include <QSettings>
 
 #include "commandwidget.h"
+#include "rawdataview.h"
 
 namespace Ui {
 class CommandPanel;
@@ -51,6 +52,8 @@ public:
     void loadSettings(QSettings* settings);
     /// Number of commands
     unsigned numOfCommands();
+    /// Get raw data view for external connections
+    RawDataView* getRawDataView() const;
 
 signals:
     // emitted when user tries to send an empty command
@@ -62,6 +65,7 @@ private:
     QMenu _menu;
     QAction _newCommandAction;
     QList<CommandWidget*> commands;
+    RawDataView* rawDataView;
 
     /// Reassigns F1-12 keys to commands in order.
     void reAssignShortcuts();

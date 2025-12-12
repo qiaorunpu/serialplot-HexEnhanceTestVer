@@ -21,6 +21,9 @@
 #include "setting_defines.h"
 #include "framedreadersettings.h"
 #include "ui_framedreadersettings.h"
+#include "channelmappingdialog.h"
+#include "checksumconfigdialog.h"
+#include "checksumcalculator.h"
 
 FramedReaderSettings::FramedReaderSettings(QWidget *parent) :
     QWidget(parent),
@@ -33,59 +36,50 @@ FramedReaderSettings::FramedReaderSettings(QWidget *parent) :
     ui->leSyncWord->setText("AA BB");
     ui->spNumOfChannels->setMaximum(MAX_NUM_CHANNELS);
 
+    // Setup channel mapping
+    _channelMapping.setNumChannels(ui->spNumOfChannels->value());
+
+    // Setup checkCode config
+    _checksumConfig.enabled = false;
+    _checksumConfig.algorithm = ChecksumAlgorithm::None;
+
     connect(ui->cbChecksum, &QCheckBox::toggled,
             [this](bool enabled)
             {
+                _checksumConfig.enabled = enabled;
                 emit checksumChanged(enabled);
+                updatePayloadSize();  // Update payload size when checkCode is toggled
             });
 
     connect(ui->cbDebugMode, &QCheckBox::toggled,
             this, &FramedReaderSettings::debugModeChanged);
 
-    {
-        // add frame size selection buttons to the same fbGroup
-        // fbGroup = new QButtonGroup(this);
-        fbGroup.addButton(ui->rbFixedSize, (int) SizeFieldType::Fixed);
-        fbGroup.addButton(ui->rbSize1Byte, (int) SizeFieldType::Field1Byte);
-        fbGroup.addButton(ui->rbSize2Byte, (int) SizeFieldType::Field2Byte);
+    connect(ui->pbChannelMapping, &QPushButton::clicked,
+            this, &FramedReaderSettings::onChannelMappingClicked);
 
-        connect(&fbGroup, &QButtonGroup::idToggled,
-                [this](int id, bool enabled)
-                {
-                    if (!enabled) return;
-                    if (id == static_cast<int>(SizeFieldType::Fixed))
-                    {
-                        emit sizeFieldChanged(SizeFieldType::Fixed, ui->spSize->value());
-                    }
-                    else
-                    {
-                        emit sizeFieldChanged(static_cast<SizeFieldType>(id), 0);
-                    }
-                });
+    connect(ui->pbChecksumConfig, &QPushButton::clicked,
+            this, &FramedReaderSettings::onChecksumConfigClicked);
 
-        // Enable/disable size text field
-        connect(ui->rbFixedSize, &QRadioButton::toggled,
-                ui->spSize, &QWidget::setEnabled);
-
-        connect(ui->spSize, &QSpinBox::valueChanged,
-                [this](int value)
-                {
-                    if (ui->rbFixedSize->isChecked())
-                        emit sizeFieldChanged(SizeFieldType::Fixed, value);
-                });
-    }
+    // Size field is now fixed (no dynamic sizing)
 
     connect(ui->spNumOfChannels, &QSpinBox::valueChanged,
             [this](int value)
             {
+                _channelMapping.setNumChannels(value);
                 emit numOfChannelsChanged(value);
             });
 
+    connect(ui->spTotalFrameLength, &QSpinBox::valueChanged,
+            this, &FramedReaderSettings::onTotalFrameLengthChanged);
+
     connect(ui->leSyncWord, &QLineEdit::textChanged,
             this, &FramedReaderSettings::onSyncWordEdited);
+    connect(ui->leSyncWord, &QLineEdit::textChanged,
+            this, &FramedReaderSettings::updatePayloadSize);
 
-    connect(ui->nfBox, SIGNAL(selectionChanged(NumberFormat)),
-            this, SIGNAL(numberFormatChanged(NumberFormat)));
+    // Update payload size when checkCode config changes
+    connect(this, &FramedReaderSettings::checksumConfigChanged,
+            this, &FramedReaderSettings::updatePayloadSize);
 }
 
 FramedReaderSettings::~FramedReaderSettings()
@@ -111,15 +105,7 @@ unsigned FramedReaderSettings::numOfChannels()
     return ui->spNumOfChannels->value();
 }
 
-NumberFormat FramedReaderSettings::numberFormat()
-{
-    return ui->nfBox->currentSelection();
-}
-
-Endianness FramedReaderSettings::endianness()
-{
-    return ui->endiBox->currentSelection();
-}
+// NumberFormat method removed - each channel now has its own format
 
 QByteArray FramedReaderSettings::syncWord()
 {
@@ -142,14 +128,14 @@ void FramedReaderSettings::onSyncWordEdited()
     emit syncWordChanged(syncWord());
 }
 
-FramedReaderSettings::SizeFieldType FramedReaderSettings::sizeFieldType() const
-{
-    return static_cast<SizeFieldType>(fbGroup.checkedId());
-}
-
 unsigned FramedReaderSettings::fixedFrameSize() const
 {
     return ui->spSize->value();
+}
+
+unsigned FramedReaderSettings::totalFrameLength() const
+{
+    return ui->spTotalFrameLength->value();
 }
 
 bool FramedReaderSettings::isChecksumEnabled()
@@ -162,31 +148,69 @@ bool FramedReaderSettings::isDebugModeEnabled()
     return ui->cbDebugMode->isChecked();
 }
 
+ChannelMappingConfig& FramedReaderSettings::channelMapping()
+{
+    return _channelMapping;
+}
+
+ChecksumConfig& FramedReaderSettings::checksumConfig()
+{
+    return _checksumConfig;
+}
+
+void FramedReaderSettings::onChannelMappingClicked()
+{
+    ChannelMappingDialog dialog(_channelMapping, this);
+    // Pass total frame size (sync word + payload) since positions are now absolute
+    unsigned totalFrameSize = syncWord().size() + ui->spSize->value();
+    dialog.setTotalFrameSize(totalFrameSize);
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        emit channelMappingChanged();
+    }
+}
+
+void FramedReaderSettings::onChecksumConfigClicked()
+{
+    ChecksumConfigDialog dialog(_checksumConfig, totalFrameLength(), this);
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        emit checksumConfigChanged();
+    }
+}
+
 void FramedReaderSettings::saveSettings(QSettings* settings)
 {
     settings->beginGroup(SettingGroup_CustomFrame);
     settings->setValue(SG_CustomFrame_NumOfChannels, numOfChannels());
-    settings->setValue(SG_CustomFrame_NumberFormat, numberFormatToStr(numberFormat()));
-    settings->setValue(SG_CustomFrame_Endianness,
-                       endianness() == LittleEndian ? "little" : "big");
+    settings->setValue(SG_CustomFrame_TotalFrameLength, totalFrameLength());
     settings->setValue(SG_CustomFrame_FrameStart, ui->leSyncWord->text());
-    QString sizeFieldStr;
-    if (sizeFieldType() == SizeFieldType::Field1Byte)
-    {
-        sizeFieldStr = "field1byte";
-    }
-    else if (sizeFieldType() == SizeFieldType::Field2Byte)
-    {
-        sizeFieldStr = "field2byte";
-    }
-    else
-    {
-        sizeFieldStr = "fixed";
-    }
-    settings->setValue(SG_CustomFrame_SizeFieldType, sizeFieldStr);
     settings->setValue(SG_CustomFrame_FixedFrameSize, fixedFrameSize());
     settings->setValue(SG_CustomFrame_Checksum, ui->cbChecksum->isChecked());
     settings->setValue(SG_CustomFrame_DebugMode, ui->cbDebugMode->isChecked());
+
+    // Save checksum configuration
+    settings->setValue(SG_CustomFrame_ChecksumAlgorithm, ChecksumCalculator::algorithmToString(_checksumConfig.algorithm));
+    settings->setValue(SG_CustomFrame_ChecksumStartByte, _checksumConfig.startByte);
+    settings->setValue(SG_CustomFrame_ChecksumEndByte, _checksumConfig.endByte);
+    settings->setValue(SG_CustomFrame_ChecksumEndianness, _checksumConfig.isLittleEndian ? "little" : "big");
+
+    // Save channel mapping
+    settings->beginGroup(SG_CustomFrame_ChannelMapping);
+    for (unsigned i = 0; i < _channelMapping.numChannels(); i++)
+    {
+        const ChannelMapping& ch = _channelMapping.channel(i);
+        QString chKey = QString("%1_%2").arg(SG_CustomFrame_Channel).arg(i);
+        settings->beginGroup(chKey);
+        settings->setValue(SG_CustomFrame_ChannelByteOffset, ch.byteOffset);
+        settings->setValue(SG_CustomFrame_ChannelByteLength, ch.byteLength);
+        settings->setValue(SG_CustomFrame_ChannelFormat, numberFormatToStr(ch.numberFormat));
+        settings->setValue(SG_CustomFrame_ChannelEndianness, ch.endianness == LittleEndian ? "little" : "big");
+        settings->setValue(SG_CustomFrame_ChannelEnabled, ch.enabled);
+        settings->endGroup();
+    }
+    settings->endGroup();
+
     settings->endGroup();
 }
 
@@ -198,24 +222,9 @@ void FramedReaderSettings::loadSettings(QSettings* settings)
     ui->spNumOfChannels->setValue(
         settings->value(SG_CustomFrame_NumOfChannels, numOfChannels()).toInt());
 
-    // load number format
-    NumberFormat nfSetting =
-        strToNumberFormat(settings->value(SG_CustomFrame_NumberFormat,
-                                          QString()).toString());
-    if (nfSetting == NumberFormat_INVALID) nfSetting = numberFormat();
-    ui->nfBox->setSelection(nfSetting);
-
-    // load endianness
-    QString endiannessSetting =
-        settings->value(SG_CustomFrame_Endianness, QString()).toString();
-    if (endiannessSetting == "little")
-    {
-        ui->endiBox->setSelection(LittleEndian);
-    }
-    else if (endiannessSetting == "big")
-    {
-        ui->endiBox->setSelection(BigEndian);
-    } // else don't change
+    // load total frame length
+    ui->spTotalFrameLength->setValue(
+        settings->value(SG_CustomFrame_TotalFrameLength, ui->spTotalFrameLength->value()).toInt());
 
     // load frame start
     QString frameStartSetting =
@@ -228,23 +237,9 @@ void FramedReaderSettings::loadSettings(QSettings* settings)
         ui->leSyncWord->setText(frameStartSetting);
     }
 
-    // load frame size type and fixed value
+    // load fixed frame size
     ui->spSize->setValue(
         settings->value(SG_CustomFrame_FixedFrameSize, ui->spSize->value()).toInt());
-
-    QString sizeFieldStr = settings->value(SG_CustomFrame_SizeFieldType, "").toString();
-    if (sizeFieldStr == "fixed")
-    {
-        ui->rbFixedSize->setChecked(true);
-    }
-    else if (sizeFieldStr == "field1byte")
-    {
-        ui->rbSize1Byte->setChecked(true);
-    }
-    else if (sizeFieldStr == "field2byte")
-    {
-        ui->rbSize2Byte->setChecked(true);
-    } // ignore invalid value
 
     // load checksum
     ui->cbChecksum->setChecked(
@@ -254,5 +249,59 @@ void FramedReaderSettings::loadSettings(QSettings* settings)
     ui->cbDebugMode->setChecked(
         settings->value(SG_CustomFrame_DebugMode, ui->cbDebugMode->isChecked()).toBool());
 
+    // Load checksum configuration
+    _checksumConfig.algorithm = ChecksumCalculator::stringToAlgorithm(
+        settings->value(SG_CustomFrame_ChecksumAlgorithm, "None").toString());
+    _checksumConfig.startByte = settings->value(SG_CustomFrame_ChecksumStartByte, 0).toInt();
+    _checksumConfig.endByte = settings->value(SG_CustomFrame_ChecksumEndByte, 0).toInt();
+    QString endiannessStr = settings->value(SG_CustomFrame_ChecksumEndianness, "little").toString();
+    _checksumConfig.isLittleEndian = (endiannessStr == "little");
+
+    // Load channel mapping
+    settings->beginGroup(SG_CustomFrame_ChannelMapping);
+    for (unsigned i = 0; i < _channelMapping.numChannels(); i++)
+    {
+        ChannelMapping& ch = _channelMapping.channel(i);
+        QString chKey = QString("%1_%2").arg(SG_CustomFrame_Channel).arg(i);
+        if (settings->childGroups().contains(chKey))
+        {
+            settings->beginGroup(chKey);
+            ch.byteOffset = settings->value(SG_CustomFrame_ChannelByteOffset, ch.byteOffset).toInt();
+            ch.byteLength = settings->value(SG_CustomFrame_ChannelByteLength, ch.byteLength).toInt();
+            ch.numberFormat = strToNumberFormat(settings->value(SG_CustomFrame_ChannelFormat, "uint8").toString());
+            QString endiStr = settings->value(SG_CustomFrame_ChannelEndianness, "little").toString();
+            ch.endianness = (endiStr == "little") ? LittleEndian : BigEndian;
+            ch.enabled = settings->value(SG_CustomFrame_ChannelEnabled, true).toBool();
+            settings->endGroup();
+        }
+    }
     settings->endGroup();
+
+    settings->endGroup();
+    updatePayloadSize();
+}
+
+void FramedReaderSettings::onTotalFrameLengthChanged()
+{
+    emit totalFrameLengthChanged(totalFrameLength());
+    updatePayloadSize();
+}
+
+void FramedReaderSettings::updatePayloadSize()
+{
+    updatePayloadSizeInternal();
+}
+
+void FramedReaderSettings::updatePayloadSizeInternal()
+{
+    unsigned totalLength = totalFrameLength();
+    unsigned frameStartLength = syncWord().size();
+    unsigned checksumLength = _checksumConfig.enabled ? ChecksumCalculator::getOutputSize(_checksumConfig.algorithm) : 0;
+    
+    // No size field length - frame format is now fixed
+    int payloadSize = totalLength - frameStartLength - checksumLength;
+    
+    if (payloadSize < 1) payloadSize = 1;
+    
+    ui->spSize->setValue(payloadSize);
 }

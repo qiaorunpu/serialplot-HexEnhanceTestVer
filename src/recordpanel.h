@@ -24,8 +24,11 @@
 #include <QString>
 #include <QToolBar>
 #include <QAction>
+#include <QTimer>
+#include <QElapsedTimer>
 
 #include "datarecorder.h"
+#include "rawdatarecorder.h"
 #include "stream.h"
 
 namespace Ui {
@@ -53,10 +56,18 @@ signals:
     void recordStarted();
     void recordStopped();
     void recordPausedChanged(bool enabled);
+    void rawRecordingStarted(RawDataRecorder* recorder);
+    void rawRecordingStopped(RawDataRecorder* recorder);
 
 public slots:
     /// Must be called when port is closed
     void onPortClose();
+
+    /// Start dual recording (raw + CSV)
+    void startRecording();
+    
+    /// Stop all recording
+    void stopRecording();
 
 private:
     Ui::RecordPanel *ui;
@@ -64,7 +75,16 @@ private:
     QAction recordAction;
     bool overwriteSelected;
     DataRecorder recorder;
+    RawDataRecorder rawRecorder;
     Stream* _stream;
+    
+    // Timer functionality
+    QTimer recordingTimer;
+    QTimer progressTimer;
+    QElapsedTimer elapsedTimer;
+    int timerDuration; // in seconds, 0 = continuous
+    bool isRecording;
+    bool csvRecordingActive;
 
     /**
      * @brief Increments the file name.
@@ -109,7 +129,6 @@ private:
     QString formatTimeStamp(QString t) const;
 
     bool startRecording(QString fileName);
-    void stopRecording(void);
 
     /// Returns separator text from ui. "\t" is converted to TAB
     /// character.
@@ -117,18 +136,34 @@ private:
 
     DataRecorder::TimestampOption currentTimestampOption() const;
 
+    /// Process filename with auto-increment and timestamp if needed
+    QString processFileName(const QString& fileName, bool autoIncrement);
+
 private slots:
     /**
-     * @brief Opens up the file select dialog
-     *
-     * If you cancel the selection operation, currently selected file is not
-     * changed.
+     * @brief Opens up the file select dialog for raw data
      *
      * @return true if file selected, false if user cancels
      */
-    bool selectFile();
+    bool selectRawFile();
+
+    /**
+     * @brief Opens up the file select dialog for CSV data
+     *
+     * @return true if file selected, false if user cancels
+     */
+    bool selectCsvFile();
 
     void onRecord(bool start);
+    
+    /// Timer timeout handler
+    void onTimerTimeout();
+    
+    /// Timer duration changed
+    void onTimerDurationChanged(int seconds);
+    
+    /// Update progress bar
+    void updateProgress();
 
 };
 

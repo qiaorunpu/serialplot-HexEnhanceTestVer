@@ -19,6 +19,9 @@
 
 #include <QByteArray>
 #include <QtDebug>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QFont>
 
 #include "commandpanel.h"
 #include "ui_commandpanel.h"
@@ -32,9 +35,23 @@ CommandPanel::CommandPanel(QSerialPort* port, QWidget *parent) :
     serialPort = port;
 
     ui->setupUi(this);
+    
+    // Setup commands area
     auto layout = new QVBoxLayout();
     layout->setSpacing(0);
     ui->scrollAreaWidgetContents->setLayout(layout);
+
+    // Initialize and setup raw data view
+    rawDataView = new RawDataView(this);
+    
+    // Add raw data view to the right panel
+    auto rawDataLayout = new QVBoxLayout(ui->rawDataWidget);
+    
+    // Add title for raw data
+    auto rawDataLabel = new QLabel("Raw Data");
+    rawDataLabel->setFont(QFont("", -1, QFont::Bold));
+    rawDataLayout->addWidget(rawDataLabel);
+    rawDataLayout->addWidget(rawDataView);
 
     connect(ui->pbNew, &QPushButton::clicked, this, &CommandPanel::newCommand);
     connect(&_newCommandAction, &QAction::triggered, this, &CommandPanel::newCommand);
@@ -92,7 +109,12 @@ void CommandPanel::sendCommand(QByteArray command)
         return;
     }
 
-    if (serialPort->write(command) < 0)
+    if (serialPort->write(command) >= 0)
+    {
+        // Add sent data to raw data view
+        rawDataView->addSentData(command);
+    }
+    else
     {
         qCritical() << "Send command failed!";
     }
@@ -106,6 +128,11 @@ QMenu* CommandPanel::menu()
 QAction* CommandPanel::newCommandAction()
 {
     return &_newCommandAction;
+}
+
+RawDataView* CommandPanel::getRawDataView() const
+{
+    return rawDataView;
 }
 
 unsigned CommandPanel::numOfCommands()

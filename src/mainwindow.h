@@ -53,6 +53,8 @@ namespace Ui {
 class MainWindow;
 }
 
+class RawDataRecorder;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -93,6 +95,9 @@ private:
     DataTextView textView;
     UpdateCheckDialog updateCheckDialog;
     BPSLabel bpsLabel;
+
+    // Raw data recorder pointer for active recording
+    RawDataRecorder* activeRawRecorder;
 
     void handleCommandLineOptions(const QCoreApplication &app);
 
