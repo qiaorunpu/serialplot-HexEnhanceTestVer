@@ -303,7 +303,7 @@ bool PlotControlPanel::askNSConfirmation(int value)
                    this);
 
     auto cb = new QCheckBox("Don't show this again.");
-    connect(cb, &QCheckBox::checkStateChanged, [this](Qt::CheckState state)
+    connect(cb, &QCheckBox::stateChanged, [this](int state)
             {
                 warnNumOfSamples = (state == Qt::Unchecked);
             });
