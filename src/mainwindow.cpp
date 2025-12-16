@@ -198,6 +198,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&plotControlPanel, &PlotControlPanel::lineThicknessChanged,
             plotMan, &PlotManager::setLineThickness);
 
+    connect(&plotControlPanel, &PlotControlPanel::numPlotsChanged,
+            this, &MainWindow::onNumPlotsChanged);
+
     // plot toolbar signals
     QObject::connect(ui->actionClear, SIGNAL(triggered(bool)),
                      this, SLOT(clearPlot()));
@@ -437,6 +440,13 @@ void MainWindow::onNumOfSamplesChanged(int value)
     numOfSamples = value;
     stream.setNumSamples(value);
     plotMan->replot();
+}
+
+void MainWindow::onNumPlotsChanged(int numPlots)
+{
+    if (plotMan && plotMan->mapping()) {
+        plotMan->mapping()->setNumPlots(numPlots);
+    }
 }
 
 void MainWindow::onSpsChanged(float sps)

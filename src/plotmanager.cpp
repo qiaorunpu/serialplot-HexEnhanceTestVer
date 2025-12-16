@@ -26,6 +26,7 @@
 #include "plot.h"
 #include "plotmanager.h"
 #include "setting_defines.h"
+#include "channelplotmappingdialog.h"
 
 PlotManager::PlotManager(QWidget* plotArea, PlotMenu* menu,
                          const Stream* stream, QObject* parent) :
@@ -50,6 +51,9 @@ PlotManager::PlotManager(QWidget* plotArea, PlotMenu* menu,
     connect(stream, &Stream::numChannelsChanged, this, &PlotManager::onNumChannelsChanged);
     connect(stream, &Stream::dataAdded, this, &PlotManager::replot);
 
+    // Initialize mapping with current channel count
+    _mapping->setNumChannels(stream->numChannels());
+    
     // add initial curves if any?
     for (unsigned int i = 0; i < stream->numChannels(); i++)
     {
@@ -67,6 +71,9 @@ PlotManager::PlotManager(QWidget* plotArea, PlotMenu* menu,
     setNumOfSamples(snapshot->numSamples());
     setPlotWidth(snapshot->numSamples());
     infoModel = snapshot->infoModel();
+    
+    // Initialize mapping with snapshot channel count
+    _mapping->setNumChannels(snapshot->numChannels());
 
     for (unsigned ci = 0; ci < snapshot->numChannels(); ci++)
     {
@@ -84,6 +91,7 @@ void PlotManager::construct(QWidget* plotArea, PlotMenu* menu)
 {
     _menu = menu;
     _plotArea = plotArea;
+    _mapping = new ChannelPlotMapping(this);
     _autoScaled = true;
     _yMin = 0;
     _yMax = 1;
@@ -109,14 +117,18 @@ void PlotManager::construct(QWidget* plotArea, PlotMenu* menu)
             this, &PlotManager::showMinorGrid);
     connect(&menu->darkBackgroundAction, &QAction::toggled,
             this, &PlotManager::darkBackground);
-    connect(&menu->showMultiAction, &QAction::toggled,
-            this, &PlotManager::setMulti);
     connect(&menu->unzoomAction, &QAction::triggered,
             this, &PlotManager::unzoom);
 
     connect(&menu->showLegendAction, &QAction::toggled,
             this, &PlotManager::showLegend);
+    connect(&menu->configureChannelMappingAction, &QAction::triggered,
+            this, &PlotManager::showChannelMappingDialog);
     connect(menu, &PlotMenu::legendPosChanged, this, &PlotManager::setLegendPosition);
+    
+    // connect mapping changes
+    connect(_mapping, &ChannelPlotMapping::mappingChanged,
+            this, &PlotManager::onMappingChanged);
 
     // initial settings from menu actions
     showGrid(menu->showGridAction.isChecked());
@@ -124,7 +136,8 @@ void PlotManager::construct(QWidget* plotArea, PlotMenu* menu)
     darkBackground(menu->darkBackgroundAction.isChecked());
     showLegend(menu->showLegendAction.isChecked());
     setLegendPosition(menu->legendPosition());
-    setMulti(menu->showMultiAction.isChecked());
+    // Use custom plot mapping by default
+    _mapping->setMode(ChannelPlotMapping::CustomPlot);
 }
 
 PlotManager::~PlotManager()
@@ -148,6 +161,9 @@ void PlotManager::onNumChannelsChanged(unsigned value)
 {
     unsigned int oldNum = numOfCurves();
     unsigned numOfChannels = value;
+    
+    // Update mapping with new channel count
+    _mapping->setNumChannels(numOfChannels);
 
     if (numOfChannels > oldNum)
     {
@@ -174,6 +190,11 @@ void PlotManager::onChannelInfoChanged(const QModelIndex &topLeft,
 
     for (int ci = start; ci <= end; ci++)
     {
+        // Ensure ci is within valid range
+        if (ci < 0 || ci >= curves.size()) {
+            continue;
+        }
+        
         QString name = topLeft.sibling(ci, ChannelInfoModel::COLUMN_NAME).data(Qt::EditRole).toString();
         QColor color = topLeft.sibling(ci, ChannelInfoModel::COLUMN_NAME).data(Qt::ForegroundRole).value<QColor>();
         bool visible = topLeft.sibling(ci, ChannelInfoModel::COLUMN_VISIBILITY).data(Qt::CheckStateRole).toBool();
@@ -224,65 +245,21 @@ void PlotManager::checkNoVisChannels()
 
 void PlotManager::setMulti(bool enabled)
 {
-    isMulti = enabled;
-
-    // detach all curves
-    for (auto curve : curves)
+    // Update mapping based on multi mode
+    if (enabled)
     {
-        curve->detach();
-    }
-
-    // remove all widgets
-    while (plotWidgets.size())
-    {
-        delete plotWidgets.takeLast();
-    }
-
-    // setup new layout
-    setupLayout(isMulti);
-
-    if (isMulti)
-    {
-        // add new widgets and attach
-        int i = 0;
-        for (auto curve : curves)
+        if (_mapping->mode() == ChannelPlotMapping::SinglePlot)
         {
-            auto plot = addPlotWidget();
-            plot->setVisible(curve->isVisible());
-            if (_stream != nullptr)
-            {
-                plot->setDispChannels(QVector<const StreamChannel*>(1, _stream->channel(i)));
-            }
-            curve->attach(plot);
-            i++;
+            _mapping->setMode(ChannelPlotMapping::MultiPlot);
         }
+        // If already in CustomMapping mode, leave it as is
     }
     else
     {
-        // add a single widget
-        auto plot = addPlotWidget();
-
-        if (_stream != nullptr)
-        {
-            plot->setDispChannels(_stream->allChannels());
-        }
-
-        // attach all curves
-        for (auto curve : curves)
-        {
-            curve->attach(plot);
-        }
+        _mapping->setMode(ChannelPlotMapping::SinglePlot);
     }
-
-
-    // Note: direct call doesn't work presumably because widgets are not ready
-    QMetaObject::invokeMethod(this, "syncScales", Qt::QueuedConnection);
-
-    // will skip if no plot widgets exist (can happen during constructor)
-    if (plotWidgets.length())
-    {
-        checkNoVisChannels();
-    }
+    
+    // The mapping change will trigger rebuildPlotLayout automatically
 }
 
 void PlotManager::setupLayout(bool multiPlot)
@@ -672,5 +649,136 @@ void PlotManager::exportSvg(QString fileName) const
         painter.begin(&gen);
         renderer.render(plot, &painter, plot->rect());
         painter.end();
+    }
+}
+
+void PlotManager::onMappingChanged()
+{
+    // Rebuild the plot layout based on the new mapping
+    rebuildPlotLayout();
+}
+
+void PlotManager::showChannelMappingDialog()
+{
+    if (!infoModel) return;  // No channel info available
+    
+    // Ensure mapping has correct number of channels
+    _mapping->setNumChannels(infoModel->rowCount());
+    
+    ChannelPlotMappingDialog dialog(_mapping, infoModel, _plotArea);
+    
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        // Dialog automatically applies changes when accepted
+        // No need to call applyToMapping as it doesn't exist
+    }
+}
+
+void PlotManager::rebuildPlotLayout()
+{
+    // detach all curves
+    for (auto curve : curves)
+    {
+        curve->detach();
+    }
+
+    // remove all widgets
+    while (plotWidgets.size())
+    {
+        delete plotWidgets.takeLast();
+    }
+
+    if (_mapping->mode() == ChannelPlotMapping::SinglePlot)
+    {
+        // Setup single plot layout
+        setupLayout(false);
+        auto plot = addPlotWidget();
+
+        if (_stream != nullptr)
+        {
+            plot->setDispChannels(_stream->allChannels());
+        }
+
+        // attach all curves
+        for (auto curve : curves)
+        {
+            curve->attach(plot);
+        }
+        isMulti = false;
+    }
+    else if (_mapping->mode() == ChannelPlotMapping::MultiPlot)
+    {
+        // Setup multi plot layout (each channel in its own plot)
+        setupLayout(true);
+        
+        int i = 0;
+        for (auto curve : curves)
+        {
+            auto plot = addPlotWidget();
+            plot->setVisible(curve->isVisible());
+            if (_stream != nullptr)
+            {
+                plot->setDispChannels(QVector<const StreamChannel*>(1, _stream->channel(i)));
+            }
+            curve->attach(plot);
+            i++;
+        }
+        isMulti = true;
+    }
+    else // CustomMapping
+    {
+        // Setup custom mapping layout
+        setupLayout(true);
+        
+        unsigned numPlotsNeeded = _mapping->getNumPlotsNeeded();
+        
+        // Create the required number of plots
+        for (unsigned p = 0; p < numPlotsNeeded; p++)
+        {
+            addPlotWidget();
+        }
+        
+        // Attach curves to their assigned plots
+        for (int i = 0; i < curves.size(); i++)
+        {
+            unsigned plotIndex = _mapping->getPlotForChannel(i);
+            if (plotIndex < plotWidgets.size())
+            {
+                auto curve = curves[i];
+                curve->attach(plotWidgets[plotIndex]);
+                
+                // Update plot visibility based on curve visibility
+                plotWidgets[plotIndex]->setVisible(plotWidgets[plotIndex]->isVisible() || curve->isVisible());
+                
+                // Set display channels for this plot
+                if (_stream != nullptr)
+                {
+                    auto channelsForThisPlot = _mapping->getChannelsForPlot(plotIndex);
+                    QVector<const StreamChannel*> channels;
+                    for (unsigned ci : channelsForThisPlot)
+                    {
+                        if (ci < _stream->numChannels())
+                        {
+                            channels.append(_stream->channel(ci));
+                        }
+                    }
+                    plotWidgets[plotIndex]->setDispChannels(channels);
+                }
+            }
+        }
+        isMulti = true;
+    }
+
+    // Note: showMultiAction removed - using new custom mapping system
+    // No need to update menu state as multiplot functionality is replaced
+    
+    // Note: direct call doesn't work presumably because widgets are not ready
+    QMetaObject::invokeMethod(this, "syncScales", Qt::QueuedConnection);
+
+    // will skip if no plot widgets exist (can happen during constructor)
+    if (plotWidgets.length())
+    {
+        checkNoVisChannels();
+        replot();
     }
 }

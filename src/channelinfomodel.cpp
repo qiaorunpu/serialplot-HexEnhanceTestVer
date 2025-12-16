@@ -66,36 +66,10 @@ ChannelInfoModel::ChannelInfoModel(unsigned numberOfChannels, QObject* parent) :
 }
 
 ChannelInfoModel::ChannelInfoModel(const ChannelInfoModel& other) :
-    ChannelInfoModel(other.rowCount(), other.parent())
+    ChannelInfoModel(other._numOfChannels, other.parent())
 {
-    // TODO: why not set (copy) info list directly instead?
-    for (int i = 0; i < other.rowCount(); i++)
-    {
-        setData(index(i, COLUMN_NAME),
-                other.data(other.index(i, COLUMN_NAME), Qt::EditRole),
-                Qt::EditRole);
-        setData(index(i, COLUMN_NAME),
-                other.data(other.index(i, COLUMN_NAME), Qt::ForegroundRole),
-                Qt::ForegroundRole);
-
-        setData(index(i, COLUMN_VISIBILITY),
-                other.data(other.index(i, COLUMN_VISIBILITY), Qt::CheckStateRole),
-                Qt::CheckStateRole);
-
-        setData(index(i, COLUMN_GAIN),
-                other.data(other.index(i, COLUMN_GAIN), Qt::CheckStateRole),
-                Qt::CheckStateRole);
-        setData(index(i, COLUMN_GAIN),
-                other.data(other.index(i, COLUMN_GAIN), Qt::EditRole),
-                Qt::EditRole);
-
-        setData(index(i, COLUMN_OFFSET),
-                other.data(other.index(i, COLUMN_OFFSET), Qt::CheckStateRole),
-                Qt::CheckStateRole);
-        setData(index(i, COLUMN_OFFSET),
-                other.data(other.index(i, COLUMN_OFFSET), Qt::EditRole),
-                Qt::EditRole);
-    }
+    // Simple copy - let the base constructor handle initialization
+    // Don't copy individual data to avoid potential access issues during initialization
 }
 
 ChannelInfoModel::ChannelInfoModel(const QStringList& channelNames) :
@@ -112,45 +86,75 @@ ChannelInfoModel::ChannelInfo::ChannelInfo(unsigned index)
     name = tr("Channel %1").arg(index + 1);
     visibility = true;
     color = colors[index % NUMOF_COLORS];
-    gain = 1.0;
+    gain = 1.0;  // Default scale for typical sensor values
     offset = 0.0;
     gainEn = false;
     offsetEn = false;
+    plotIndex = 0;  // Default: all channels in plot 1 (0-based index)
 }
 
 QString ChannelInfoModel::name(unsigned i) const
 {
-    return infos[i].name;
+    if (i < (unsigned)infos.length()) {
+        return infos[i].name;
+    }
+    return tr("Channel %1").arg(i + 1); // Default name for invalid index
 }
 
 QColor ChannelInfoModel::color(unsigned i) const
 {
-    return infos[i].color;
+    if (i < (unsigned)infos.length()) {
+        return infos[i].color;
+    }
+    return colors[i % NUMOF_COLORS]; // Default color for invalid index
 }
 
 bool ChannelInfoModel::isVisible(unsigned i) const
 {
-    return infos[i].visibility;
+    if (i < (unsigned)infos.length()) {
+        return infos[i].visibility;
+    }
+    return true; // Default visibility for invalid index
 }
 
 bool ChannelInfoModel::gainEn (unsigned i) const
 {
-    return infos[i].gainEn;
+    if (i < (unsigned)infos.length()) {
+        return infos[i].gainEn;
+    }
+    return false; // Default gainEn for invalid index
 }
 
 double ChannelInfoModel::gain (unsigned i) const
 {
-    return infos[i].gain;
+    if (i < (unsigned)infos.length()) {
+        return infos[i].gain;
+    }
+    return 1.0; // Default gain for invalid index
 }
 
 bool ChannelInfoModel::offsetEn (unsigned i) const
 {
-    return infos[i].offsetEn;
+    if (i < (unsigned)infos.length()) {
+        return infos[i].offsetEn;
+    }
+    return false; // Default offsetEn for invalid index
 }
 
 double ChannelInfoModel::offset (unsigned i) const
 {
-    return infos[i].offset;
+    if (i < (unsigned)infos.length()) {
+        return infos[i].offset;
+    }
+    return 0.0; // Default offset for invalid index
+}
+
+unsigned ChannelInfoModel::plotIndex(unsigned i) const
+{
+    if (i < (unsigned)infos.length()) {
+        return infos[i].plotIndex;
+    }
+    return 0; // Default plot index for invalid index
 }
 
 QStringList ChannelInfoModel::channelNames() const
@@ -187,6 +191,10 @@ Qt::ItemFlags ChannelInfoModel::flags(const QModelIndex &index) const
     {
         return Qt::ItemIsEditable | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemNeverHasChildren | Qt::ItemIsSelectable;
     }
+    else if (index.column() == COLUMN_PLOT)
+    {
+        return Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemNeverHasChildren | Qt::ItemIsSelectable;
+    }
 
     return Qt::NoItemFlags;
 }
@@ -194,7 +202,7 @@ Qt::ItemFlags ChannelInfoModel::flags(const QModelIndex &index) const
 QVariant ChannelInfoModel::data(const QModelIndex &index, int role) const
 {
     // check index
-    if (index.row() >= (int) _numOfChannels || index.row() < 0)
+    if (index.row() >= (int) _numOfChannels || index.row() < 0 || index.row() >= infos.length())
     {
         return QVariant();
     }
@@ -244,6 +252,13 @@ QVariant ChannelInfoModel::data(const QModelIndex &index, int role) const
         {
             return QVariant(info.offset);
         }
+    } // plot
+    else if (index.column() == COLUMN_PLOT)
+    {
+        if (role == Qt::DisplayRole || role == Qt::EditRole)
+        {
+            return QVariant(info.plotIndex + 1); // Display 1-based index
+        }
     }
 
     return QVariant();
@@ -265,11 +280,15 @@ QVariant ChannelInfoModel::headerData(int section, Qt::Orientation orientation, 
             }
             else if (section == COLUMN_GAIN)
             {
-                return tr("Gain");
+                return tr("Scale");
             }
             else if (section == COLUMN_OFFSET)
             {
                 return tr("Offset");
+            }
+            else if (section == COLUMN_PLOT)
+            {
+                return tr("Plot Number");
             }
         }
     }
@@ -287,7 +306,7 @@ QVariant ChannelInfoModel::headerData(int section, Qt::Orientation orientation, 
 bool ChannelInfoModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     // check index
-    if (index.row() >= (int) _numOfChannels || index.row() < 0)
+    if (index.row() >= (int) _numOfChannels || index.row() < 0 || index.row() >= infos.length())
     {
         return false;
     }
@@ -351,6 +370,18 @@ bool ChannelInfoModel::setData(const QModelIndex &index, const QVariant &value, 
             r = true;
         }
     }
+    else if (index.column() == COLUMN_PLOT)
+    {
+        if (role == Qt::DisplayRole || role == Qt::EditRole)
+        {
+            unsigned plotIndex = value.toUInt();
+            if (plotIndex > 0) {
+                plotIndex--; // Convert from 1-based to 0-based
+                info.plotIndex = plotIndex;
+                r = true;
+            }
+        }
+    }
 
     if (r)
     {
@@ -391,7 +422,9 @@ void ChannelInfoModel::setNumOfChannels(unsigned number)
     {
         for (unsigned ci = _numOfChannels; ci < number; ci++)
         {
-            infos[ci].visibility = true;
+            if (ci < (unsigned)infos.length()) {
+                infos[ci].visibility = true;
+            }
         }
     }
 
@@ -411,9 +444,11 @@ void ChannelInfoModel::setNumOfChannels(unsigned number)
 void ChannelInfoModel::resetInfos()
 {
     beginResetModel();
-    for (unsigned ci = 0; (int) ci < infos.length(); ci++)
+    for (unsigned ci = 0; ci < _numOfChannels; ci++)
     {
-        infos[ci] = ChannelInfo(ci);
+        if (ci < (unsigned)infos.length()) {
+            infos[ci] = ChannelInfo(ci);
+        }
     }
     endResetModel();
 }
@@ -422,10 +457,12 @@ void ChannelInfoModel::resetInfos()
 void ChannelInfoModel::resetNames()
 {
     beginResetModel();
-    for (unsigned ci = 0; (int) ci < infos.length(); ci++)
+    for (unsigned ci = 0; ci < _numOfChannels; ci++)
     {
-        // TODO: do not create a full object every time (applies to other reset methods as well)
-        infos[ci].name = ChannelInfo(ci).name;
+        if (ci < (unsigned)infos.length()) {
+            // TODO: do not create a full object every time (applies to other reset methods as well)
+            infos[ci].name = ChannelInfo(ci).name;
+        }
     }
     endResetModel();
 }
@@ -433,9 +470,11 @@ void ChannelInfoModel::resetNames()
 void ChannelInfoModel::resetColors()
 {
     beginResetModel();
-    for (unsigned ci = 0; (int) ci < infos.length(); ci++)
+    for (unsigned ci = 0; ci < _numOfChannels; ci++)
     {
-        infos[ci].color = ChannelInfo(ci).color;
+        if (ci < (unsigned)infos.length()) {
+            infos[ci].color = ChannelInfo(ci).color;
+        }
     }
     endResetModel();
 }
@@ -453,10 +492,12 @@ void ChannelInfoModel::resetVisibility(bool visible)
 void ChannelInfoModel::resetGains()
 {
     beginResetModel();
-    for (unsigned ci = 0; (int) ci < infos.length(); ci++)
+    for (unsigned ci = 0; ci < _numOfChannels; ci++)
     {
-        infos[ci].gain = ChannelInfo(ci).gain;
-        infos[ci].gainEn = ChannelInfo(ci).gainEn;
+        if (ci < (unsigned)infos.length()) {
+            infos[ci].gain = ChannelInfo(ci).gain;
+            infos[ci].gainEn = ChannelInfo(ci).gainEn;
+        }
     }
     updateGainOrOffsetEn();
     endResetModel();
@@ -465,10 +506,12 @@ void ChannelInfoModel::resetGains()
 void ChannelInfoModel::resetOffsets()
 {
     beginResetModel();
-    for (unsigned ci = 0; (int) ci < infos.length(); ci++)
+    for (unsigned ci = 0; ci < _numOfChannels; ci++)
     {
-        infos[ci].offset = ChannelInfo(ci).offset;
-        infos[ci].offsetEn = ChannelInfo(ci).offsetEn;
+        if (ci < (unsigned)infos.length()) {
+            infos[ci].offset = ChannelInfo(ci).offset;
+            infos[ci].offsetEn = ChannelInfo(ci).offsetEn;
+        }
     }
     updateGainOrOffsetEn();
     endResetModel();

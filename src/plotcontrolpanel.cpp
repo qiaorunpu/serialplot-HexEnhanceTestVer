@@ -22,12 +22,14 @@
 #include <QCheckBox>
 #include <QStyledItemDelegate>
 #include <QColorDialog>
+#include <QtCore>
 
 #include <math.h>
 
 #include "plotcontrolpanel.h"
 #include "ui_plotcontrolpanel.h"
 #include "setting_defines.h"
+#include <QComboBox>
 
 /// Confirm if #samples is being set to a value greater than this
 const int NUMSAMPLES_CONFIRM_AT = 1000000;
@@ -43,13 +45,30 @@ struct Range
 
 Q_DECLARE_METATYPE(Range);
 
-/// Used for customizing double precision in tables
+/// Used for customizing double precision in tables and plot selection
 class SpinBoxDelegate : public QStyledItemDelegate
 {
+private:
+    int numPlots;
+    
 public:
+    SpinBoxDelegate() : numPlots(1) {}
+    
+    void setNumPlots(int plots) { numPlots = plots; }
     QWidget* createEditor(QWidget *parent, const QStyleOptionViewItem &option,
                           const QModelIndex &index) const Q_DECL_OVERRIDE
         {
+            // For COLUMN_PLOT, create a combo box
+            if (index.column() == ChannelInfoModel::COLUMN_PLOT)
+            {
+                auto combo = new QComboBox(parent);
+                // Add plot options based on current number of plots
+                for (int i = 1; i <= numPlots; ++i) {
+                    combo->addItem(QString("Plot %1").arg(i));
+                }
+                return combo;
+            }
+            
             auto w = QStyledItemDelegate::createEditor(
                 parent, option, index);
 
@@ -59,6 +78,43 @@ public:
                 sp->setDecimals(DOUBLESP_PRECISION);
             }
             return w;
+        }
+        
+    void setEditorData(QWidget *editor, const QModelIndex &index) const Q_DECL_OVERRIDE
+        {
+            if (index.column() == ChannelInfoModel::COLUMN_PLOT)
+            {
+                auto combo = qobject_cast<QComboBox*>(editor);
+                if (combo) {
+                    int plotIndex = index.data(Qt::EditRole).toInt();
+                    if (plotIndex > 0) plotIndex--; // Convert from 1-based to 0-based
+                    
+                    // Ensure plotIndex is within valid range
+                    if (plotIndex >= 0 && plotIndex < combo->count()) {
+                        combo->setCurrentIndex(plotIndex);
+                    } else {
+                        // Set to first plot if index is invalid
+                        combo->setCurrentIndex(0);
+                    }
+                    return;
+                }
+            }
+            QStyledItemDelegate::setEditorData(editor, index);
+        }
+        
+    void setModelData(QWidget *editor, QAbstractItemModel *model, 
+                      const QModelIndex &index) const Q_DECL_OVERRIDE
+        {
+            if (index.column() == ChannelInfoModel::COLUMN_PLOT)
+            {
+                auto combo = qobject_cast<QComboBox*>(editor);
+                if (combo && combo->currentIndex() >= 0) {
+                    int selectedIndex = combo->currentIndex() + 1; // Convert to 1-based
+                    model->setData(index, selectedIndex, Qt::EditRole);
+                    return;
+                }
+            }
+            QStyledItemDelegate::setModelData(editor, model, index);
         }
 };
 
@@ -70,7 +126,7 @@ PlotControlPanel::PlotControlPanel(QWidget *parent) :
     resetColorsAct(tr("Reset Colors"), this),
     showAllAct(tr("Show All"), this),
     hideAllAct(tr("Hide All"), this),
-    resetGainsAct(tr("Reset All Gain"), this),
+    resetGainsAct(tr("Reset All Scale"), this),
     resetOffsetsAct(tr("Reset All Offset"), this),
     resetMenu(tr("Reset Menu"), this)
 {
@@ -78,6 +134,9 @@ PlotControlPanel::PlotControlPanel(QWidget *parent) :
 
     delegate = new SpinBoxDelegate();
     ui->tvChannelInfo->setItemDelegate(delegate);
+    
+    // Set initial number of plots for delegate
+    updateNumPlots(ui->spNumPlots->value());
 
     warnNumOfSamples = true;    // TODO: load from settings
     _numOfSamples = ui->spNumOfSamples->value();
@@ -140,6 +199,13 @@ PlotControlPanel::PlotControlPanel(QWidget *parent) :
             [this](int thickness)
             {
                 emit lineThicknessChanged(thickness);
+            });
+
+    connect(ui->spNumPlots, &QSpinBox::valueChanged,
+            [this](int numPlots)
+            {
+                updateNumPlots(numPlots);
+                emit numPlotsChanged(numPlots);
             });
 
     // init scale range preset list
@@ -237,7 +303,7 @@ bool PlotControlPanel::askNSConfirmation(int value)
                    this);
 
     auto cb = new QCheckBox("Don't show this again.");
-    connect(cb, &QCheckBox::stateChanged, [this](int state)
+    connect(cb, &QCheckBox::checkStateChanged, [this](Qt::CheckState state)
             {
                 warnNumOfSamples = (state == Qt::Unchecked);
             });
@@ -388,6 +454,14 @@ double PlotControlPanel::plotWidth() const
 void PlotControlPanel::onPlotWidthChanged()
 {
     emit plotWidthChanged(plotWidth());
+}
+
+void PlotControlPanel::updateNumPlots(int numPlots)
+{
+    auto spinBoxDelegate = static_cast<SpinBoxDelegate*>(delegate);
+    if (spinBoxDelegate) {
+        spinBoxDelegate->setNumPlots(numPlots);
+    }
 }
 
 void PlotControlPanel::setChannelInfoModel(ChannelInfoModel* model)

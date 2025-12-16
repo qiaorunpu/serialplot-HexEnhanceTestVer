@@ -66,6 +66,9 @@ SOURCES += \
     src/stream.cpp \
     src/streamchannel.cpp \
     src/channelinfomodel.cpp \
+    src/channelplotmapping.cpp \
+    src/channelplotmappingdialog.cpp \
+    src/resizableplotwidget.cpp \
     src/ringbuffer.cpp \
     src/indexbuffer.cpp \
     src/linindexbuffer.cpp \
@@ -149,6 +152,9 @@ HEADERS += \
     src/barplot.h \
     src/barscaledraw.h \
     src/channelinfomodel.h \
+    src/channelplotmapping.h \
+    src/channelplotmappingdialog.h \
+    src/resizableplotwidget.h \
     src/datarecorder.h \
     src/rawdatarecorder.h \
     src/defines.h \

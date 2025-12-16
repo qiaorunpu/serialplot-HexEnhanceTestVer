@@ -30,7 +30,7 @@ PlotMenu::PlotMenu(QWidget* parent) :
     unzoomAction("&Unzoom", this),
     darkBackgroundAction("&Dark Background", this),
     showLegendAction("&Legend", this),
-    showMultiAction("Multi &Plot", this),
+    configureChannelMappingAction("Configure Channel &Mapping...", this),
     setSymbolsAction("&Symbols", this),
     setSymbolsAutoAct("Show When &Zoomed", this),
     setSymbolsShowAct("Always &Show", this),
@@ -47,7 +47,6 @@ PlotMenu::PlotMenu(QWidget* parent) :
     unzoomAction.setToolTip("Unzoom the Plot");
     darkBackgroundAction.setToolTip("Enable Dark Plot Background");
     showLegendAction.setToolTip("Display the Legend on Plot");
-    showMultiAction.setToolTip("Display All Channels Separately");
     setSymbolsAction.setToolTip("Show/Hide symbols");
 
     showGridAction.setShortcut(QKeySequence("G"));
@@ -57,13 +56,11 @@ PlotMenu::PlotMenu(QWidget* parent) :
     showMinorGridAction.setCheckable(true);
     darkBackgroundAction.setCheckable(true);
     showLegendAction.setCheckable(true);
-    showMultiAction.setCheckable(true);
 
-    showGridAction.setChecked(false);
+    showGridAction.setChecked(true);
     showMinorGridAction.setChecked(false);
     darkBackgroundAction.setChecked(false);
     showLegendAction.setChecked(true);
-    showMultiAction.setChecked(false);
 
     // minor grid is only enabled when _major_ grid is enabled
     showMinorGridAction.setEnabled(false);
@@ -142,7 +139,8 @@ PlotMenu::PlotMenu(QWidget* parent) :
     addAction(&darkBackgroundAction);
     addAction(&showLegendAction);
     addAction(&setLegendPosAction);
-    addAction(&showMultiAction);
+    addSeparator();
+    addAction(&configureChannelMappingAction);
     addAction(&setSymbolsAction);
 }
 
@@ -153,7 +151,6 @@ PlotMenu::PlotMenu(PlotViewSettings s, QWidget* parent) :
     showMinorGridAction.setChecked(s.showMinorGrid);
     darkBackgroundAction.setChecked(s.darkBackground);
     showLegendAction.setChecked(s.showLegend);
-    showMultiAction.setChecked(s.showMulti);
     switch (s.showSymbols)
     {
         case Plot::ShowSymbolsAuto:
@@ -176,7 +173,7 @@ PlotViewSettings PlotMenu::viewSettings() const
             showMinorGridAction.isChecked(),
             darkBackgroundAction.isChecked(),
             showLegendAction.isChecked(),
-            showMultiAction.isChecked(),
+            false, // showMulti removed, always false
             showSymbols()
         });
 }
@@ -209,7 +206,6 @@ void PlotMenu::saveSettings(QSettings* settings)
     settings->setValue(SG_Plot_Grid, showGridAction.isChecked());
     settings->setValue(SG_Plot_MinorGrid, showMinorGridAction.isChecked());
     settings->setValue(SG_Plot_Legend, showLegendAction.isChecked());
-    settings->setValue(SG_Plot_MultiPlot, showMultiAction.isChecked());
 
     // save symbol option
     QString showSymbolsStr;
@@ -262,8 +258,6 @@ void PlotMenu::loadSettings(QSettings* settings)
     showMinorGridAction.setEnabled(showGridAction.isChecked());
     showLegendAction.setChecked(
         settings->value(SG_Plot_Legend, showLegendAction.isChecked()).toBool());
-    showMultiAction.setChecked(
-        settings->value(SG_Plot_MultiPlot, showMultiAction.isChecked()).toBool());
 
     // load symbol option
     QString showSymbolsStr = settings->value(SG_Plot_Symbols, QString()).toString();

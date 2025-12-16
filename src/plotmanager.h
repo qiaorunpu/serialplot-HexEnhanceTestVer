@@ -34,6 +34,8 @@
 #include "stream.h"
 #include "snapshot.h"
 #include "plotmenu.h"
+#include "channelplotmapping.h"
+#include "channelplotmapping.h"
 
 class PlotManager : public QObject
 {
@@ -55,6 +57,9 @@ public:
     unsigned numOfCurves();
     /// export SVG
     void exportSvg (QString fileName) const;
+
+    /// Get the channel plot mapping object
+    ChannelPlotMapping* mapping() const { return _mapping; }
 
 public slots:
     /// Enable/Disable multiple plot display
@@ -78,6 +83,7 @@ public slots:
 
 private:
     bool isMulti;
+    ChannelPlotMapping* _mapping;
     QWidget* _plotArea;
     PlotMenu* _menu;
     QVBoxLayout* layout; ///< layout of the `plotArea`
@@ -110,8 +116,10 @@ private:
     Plot* plotWidget(unsigned curveIndex);
     /// Common part of overloaded `addCurve` functions
     void _addCurve(QwtPlotCurve* curve);
-    /// Check and make sure "no visible channels" text is shown
+    /// Check and make sure \"no visible channels\" text is shown
     void checkNoVisChannels();
+    /// Rebuild plot layout based on current mapping
+    void rebuildPlotLayout();
 
 private slots:
     void showGrid(bool show = true);
@@ -126,6 +134,9 @@ private slots:
     void onChannelInfoChanged(const QModelIndex & topLeft,
                               const QModelIndex & bottomRight,
                               const QVector<int> & roles = QVector<int> ());
+    
+    void onMappingChanged();
+    void showChannelMappingDialog();
 
     /// Synchronize Y axes to be the same width (so that X axes are in line)
     void syncScales();

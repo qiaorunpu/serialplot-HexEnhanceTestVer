@@ -36,6 +36,7 @@ public:
         COLUMN_VISIBILITY,
         COLUMN_GAIN,
         COLUMN_OFFSET,
+        COLUMN_PLOT,
         COLUMN_COUNT            // MUST be last
     };
 
@@ -50,6 +51,7 @@ public:
     double  gain     (unsigned i) const;
     bool    offsetEn (unsigned i) const;
     double  offset   (unsigned i) const;
+    unsigned plotIndex(unsigned i) const;
     /// Returns true if any of the channels have gain or offset enabled
     bool gainOrOffsetEn() const;
     /// Returns a list of channel names
@@ -76,7 +78,7 @@ public slots:
     void resetNames();
     /// reset all channel colors
     void resetColors();
-    /// reset all channel gain values and disables gains
+    /// reset all channel scale values and disables scales
     void resetGains();
     /// reset all channel offset values and disables offsets
     void resetOffsets();
@@ -93,6 +95,7 @@ private:
         QColor color;
         double gain, offset;
         bool gainEn, offsetEn;
+        unsigned plotIndex;
     };
 
     unsigned _numOfChannels;     ///< @note this is not necessarily the length of `infos`

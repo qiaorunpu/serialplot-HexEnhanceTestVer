@@ -82,6 +82,9 @@ qt_add_executable(${PROGRAM_NAME} WIN32
   src/stream.cpp
   src/streamchannel.cpp
   src/channelinfomodel.cpp
+  src/channelplotmapping.cpp
+  src/channelplotmappingdialog.cpp
+  src/resizableplotwidget.cpp
   src/ringbuffer.cpp
   src/ringbuffer.cpp
   src/indexbuffer.cpp

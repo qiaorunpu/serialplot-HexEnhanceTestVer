@@ -51,7 +51,7 @@ public:
     QAction unzoomAction;
     QAction darkBackgroundAction;
     QAction showLegendAction;
-    QAction showMultiAction;
+    QAction configureChannelMappingAction;
 
     /// Returns a bundle of current view settings (menu selections)
     PlotViewSettings viewSettings() const;

@@ -52,6 +52,9 @@ public:
 
     void setChannelInfoModel(ChannelInfoModel* model);
 
+    /// Update the number of available plots for the delegate
+    void updateNumPlots(int numPlots);
+
     /// Stores plot settings into a `QSettings`
     void saveSettings(QSettings* settings);
     /// Loads plot settings from a `QSettings`.
@@ -63,6 +66,7 @@ signals:
     void xScaleChanged(bool asIndex, double xMin = 0, double xMax = 1);
     void plotWidthChanged(double width);
     void lineThicknessChanged(int thickness);
+    void numPlotsChanged(int numPlots);
 
 private:
     Ui::PlotControlPanel *ui;

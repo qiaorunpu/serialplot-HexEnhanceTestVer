@@ -124,6 +124,7 @@ private slots:
     void onPortToggled(bool open);
     void onSourceChanged(Source* source);
     void onNumOfSamplesChanged(int value);
+    void onNumPlotsChanged(int numPlots);
 
     void clearPlot();
     void onSpsChanged(float sps);

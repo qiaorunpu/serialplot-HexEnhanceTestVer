@@ -192,9 +192,13 @@ const SamplePack* Stream::applyGainOffset(const SamplePack& pack) const
 
             if (gainEn)
             {
-                for (unsigned i = 0; i < ns; i++)
+                // Use division for scale operation (avoid division by zero)
+                if (gain != 0.0)
                 {
-                    mdata[i] *= gain;
+                    for (unsigned i = 0; i < ns; i++)
+                    {
+                        mdata[i] /= gain;
+                    }
                 }
             }
             if (offsetEn)
