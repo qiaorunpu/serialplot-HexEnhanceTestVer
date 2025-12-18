@@ -209,17 +209,121 @@ void ChannelPlotMapping::updateMappingForMode()
             // Keep existing mapping, but ensure all channels have valid plots
             _plotNames.resize(_numPlots);
             for (unsigned i = 0; i < _numChannels; ++i) {
+                // If channel mapping doesn't exist or is invalid, assign to a plot
                 if (i >= _channelToPlot.size() || _channelToPlot[i] >= _numPlots) {
                     if (i < _channelToPlot.size()) {
-                        _channelToPlot[i] = 0; // Default to first plot
+                        // Invalid plot index, default to first plot
+                        _channelToPlot[i] = 0;
+                    } else {
+                        // New channel beyond previous mapping
+                        // Distribute new channels across available plots
+                        _channelToPlot.resize(i + 1);
+                        _channelToPlot[i] = i % _numPlots;
                     }
                 }
             }
             for (unsigned i = 0; i < _numPlots; ++i) {
-                if (_plotNames[i].isEmpty()) {
+                if (i >= _plotNames.size() || _plotNames[i].isEmpty()) {
+                    if (i >= _plotNames.size()) {
+                        _plotNames.resize(i + 1);
+                    }
                     _plotNames[i] = QString("Plot %1").arg(i + 1);
                 }
             }
             break;
+    }
+}
+
+void ChannelPlotMapping::saveSettings(QSettings* settings)
+{
+    settings->beginGroup("ChannelPlotMapping");
+    
+    // Save mapping mode
+    settings->setValue("mode", static_cast<int>(_mode));
+    
+    // Save number of plots (only meaningful in CustomPlot mode)
+    settings->setValue("numPlots", _numPlots);
+    
+    // Save channel to plot mapping
+    settings->beginWriteArray("channelMapping", _channelToPlot.size());
+    for (int i = 0; i < _channelToPlot.size(); ++i) {
+        settings->setArrayIndex(i);
+        settings->setValue("plotIndex", _channelToPlot[i]);
+    }
+    settings->endArray();
+    
+    // Save plot names
+    settings->beginWriteArray("plotNames", _plotNames.size());
+    for (int i = 0; i < _plotNames.size(); ++i) {
+        settings->setArrayIndex(i);
+        settings->setValue("name", _plotNames[i]);
+    }
+    settings->endArray();
+    
+    settings->endGroup();
+}
+
+void ChannelPlotMapping::loadSettings(QSettings* settings)
+{
+    settings->beginGroup("ChannelPlotMapping");
+    
+    // Load mapping mode
+    int modeInt = settings->value("mode", static_cast<int>(SinglePlot)).toInt();
+    if (modeInt >= 0 && modeInt <= CustomPlot) {
+        _mode = static_cast<MappingMode>(modeInt);
+    }
+    
+    // Load number of plots
+    _numPlots = settings->value("numPlots", 1).toUInt();
+    if (_numPlots < 1) _numPlots = 1; // Ensure at least one plot
+    
+    // Load channel to plot mapping
+    int channelMappingSize = settings->beginReadArray("channelMapping");
+    QVector<unsigned> loadedMapping;
+    if (channelMappingSize > 0) {
+        loadedMapping.resize(channelMappingSize);
+        for (int i = 0; i < channelMappingSize; ++i) {
+            settings->setArrayIndex(i);
+            unsigned plotIndex = settings->value("plotIndex", 0).toUInt();
+            // Validate plot index
+            if (plotIndex < _numPlots) {
+                loadedMapping[i] = plotIndex;
+            } else {
+                loadedMapping[i] = 0; // Default to first plot if invalid
+            }
+        }
+    }
+    settings->endArray();
+    
+    // Apply loaded mapping to current channels (may be different size)
+    if (_numChannels > 0 && !loadedMapping.isEmpty()) {
+        _channelToPlot.resize(_numChannels);
+        for (unsigned i = 0; i < _numChannels; ++i) {
+            if (i < static_cast<unsigned>(loadedMapping.size())) {
+                _channelToPlot[i] = loadedMapping[i];
+            } else {
+                // For channels beyond loaded mapping, default to first plot
+                _channelToPlot[i] = 0;
+            }
+        }
+    }
+    
+    // Load plot names
+    int plotNamesSize = settings->beginReadArray("plotNames");
+    if (plotNamesSize > 0) {
+        _plotNames.resize(plotNamesSize);
+        for (int i = 0; i < plotNamesSize; ++i) {
+            settings->setArrayIndex(i);
+            _plotNames[i] = settings->value("name", QString("Plot %1").arg(i + 1)).toString();
+        }
+    }
+    settings->endArray();
+    
+    settings->endGroup();
+    
+    // Update mapping based on loaded mode if we have channels set
+    if (_numChannels > 0) {
+        updateMappingForMode();
+        emit mappingChanged();
     }
 }

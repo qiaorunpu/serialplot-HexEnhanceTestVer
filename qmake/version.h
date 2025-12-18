@@ -21,7 +21,7 @@
 */
 
 #define MAJOR_VERSION    0
-#define MINOR_VERSION    1
-#define PATCH_VERSION    0
-#define VERSION_STRING   "0.1.0"
+#define MINOR_VERSION    13
+#define PATCH_VERSION    4
+#define VERSION_STRING   "0.13.4"
 #define VERSION_REVISION "0"

@@ -584,6 +584,7 @@ void MainWindow::saveAllSettings(QSettings* settings)
     recordPanel.saveSettings(settings);
     textView.saveSettings(settings);
     updateCheckDialog.saveSettings(settings);
+    plotMan->saveSettings(settings);
 }
 
 void MainWindow::loadAllSettings(QSettings* settings)
@@ -598,6 +599,9 @@ void MainWindow::loadAllSettings(QSettings* settings)
     recordPanel.loadSettings(settings);
     textView.loadSettings(settings);
     updateCheckDialog.loadSettings(settings);
+    // Load PlotManager settings last, after stream/dataFormat have been loaded
+    // This ensures channel count is correct when applying mapping
+    plotMan->loadSettings(settings);
 }
 
 void MainWindow::saveMWSettings(QSettings* settings)

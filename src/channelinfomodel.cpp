@@ -188,13 +188,13 @@ Qt::ItemFlags ChannelInfoModel::flags(const QModelIndex &index) const
 
 QVariant ChannelInfoModel::data(const QModelIndex &index, int role) const
 {
-    // check index
-    if (index.row() >= (int) _numOfChannels || index.row() < 0 || index.row() >= infos.length())
+    // check index - must be within valid range AND within infos array
+    if (index.row() < 0 || index.row() >= infos.length() || index.row() >= (int) _numOfChannels)
     {
         return QVariant();
     }
 
-    auto &info = infos[index.row()];
+    const auto &info = infos[index.row()];
 
     // get color
     if (role == Qt::ForegroundRole)
@@ -281,8 +281,8 @@ QVariant ChannelInfoModel::headerData(int section, Qt::Orientation orientation, 
 
 bool ChannelInfoModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    // check index
-    if (index.row() >= (int) _numOfChannels || index.row() < 0 || index.row() >= infos.length())
+    // check index - must be within valid range AND within infos array
+    if (index.row() < 0 || index.row() >= infos.length() || index.row() >= (int) _numOfChannels)
     {
         return false;
     }
@@ -392,7 +392,12 @@ void ChannelInfoModel::setNumOfChannels(unsigned number)
         }
     }
 
+    // CRITICAL: Update _numOfChannels AFTER ensuring infos array is large enough
+    // This prevents race conditions where other code accesses infos[_numOfChannels-1]
+    // before infos has been properly sized
     _numOfChannels = number;
+    
+    // Update gain/offset enable flag after _numOfChannels is set
     updateGainOrOffsetEn();
 
     if (isInserting)
@@ -493,8 +498,11 @@ void ChannelInfoModel::updateGainOrOffsetEn()
     _gainOrOffsetEn = false;
     for (unsigned ci = 0; ci < _numOfChannels; ci++)
     {
-        auto& info = infos[ci];
-        _gainOrOffsetEn |= (info.gainEn || info.offsetEn);
+        // Safety check: ensure ci is within infos array bounds
+        if (ci < (unsigned)infos.length()) {
+            const auto& info = infos[ci];
+            _gainOrOffsetEn |= (info.gainEn || info.offsetEn);
+        }
     }
 }
 

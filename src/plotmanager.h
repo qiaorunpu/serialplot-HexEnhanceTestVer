@@ -82,6 +82,11 @@ public slots:
     void setLineThickness(int thickness);
     /// Show the channel plot mapping dialog
     void showChannelMappingDialog();
+    
+    /// Save plot manager settings
+    void saveSettings(QSettings* settings);
+    /// Load plot manager settings
+    void loadSettings(QSettings* settings);
 
 private:
     bool isMulti;

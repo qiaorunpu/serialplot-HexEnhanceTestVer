@@ -782,3 +782,32 @@ void PlotManager::rebuildPlotLayout()
         replot();
     }
 }
+
+void PlotManager::saveSettings(QSettings* settings)
+{
+    if (_mapping) {
+        _mapping->saveSettings(settings);
+    }
+}
+
+void PlotManager::loadSettings(QSettings* settings)
+{
+    if (_mapping) {
+        // Load mapping settings first
+        _mapping->loadSettings(settings);
+        
+        // Update mapping with current number of channels
+        // This ensures loaded mapping adapts to current channel count
+        if (_stream != nullptr) {
+            _mapping->setNumChannels(_stream->numChannels());
+        } else if (infoModel != nullptr) {
+            _mapping->setNumChannels(infoModel->rowCount());
+        }
+        
+        // Rebuild the plot layout based on loaded mapping
+        // Only rebuild if we have plot widgets (i.e., not during initial construction)
+        if (!plotWidgets.isEmpty()) {
+            rebuildPlotLayout();
+        }
+    }
+}

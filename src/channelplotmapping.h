@@ -24,6 +24,7 @@
 #include <QVector>
 #include <QList>
 #include <QString>
+#include <QSettings>
 
 /**
  * Manages the mapping between channels and plots, allowing flexible
@@ -74,6 +75,12 @@ public:
     
     /// Reset all mappings to default (each channel to its own plot)
     void resetToDefault();
+    
+    /// Save mapping configuration to settings
+    void saveSettings(QSettings* settings);
+    
+    /// Load mapping configuration from settings
+    void loadSettings(QSettings* settings);
 
 signals:
     /// Emitted when the mapping configuration changes
