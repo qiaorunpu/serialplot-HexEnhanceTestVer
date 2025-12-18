@@ -26,7 +26,8 @@ RawDataView::RawDataView(QWidget *parent)
     : QWidget(parent),
       m_isHexMode(false),
       m_isLogMode(false),
-      m_isFrozen(false)
+      m_isFrozen(false),
+      m_isWordWrapMode(false)
 {
     setupUI();
 }
@@ -58,6 +59,12 @@ void RawDataView::setupUI()
     connect(m_logModeCheck, &QCheckBox::toggled,
             this, &RawDataView::onLogModeChanged);
     
+    // Word wrap checkbox (only for ASCII mode)
+    m_wordWrapCheck = new QCheckBox("Auto Word Wrap");
+    m_wordWrapCheck->setToolTip("Parse escape characters (\\n, \\r, \\t) in ASCII mode");
+    connect(m_wordWrapCheck, &QCheckBox::toggled,
+            this, &RawDataView::onWordWrapModeChanged);
+    
     // Control buttons
     m_clearButton = new QPushButton("Clear");
     m_freezeButton = new QPushButton("Freeze");
@@ -72,6 +79,7 @@ void RawDataView::setupUI()
     controlLayout->addWidget(m_asciiRadio);
     controlLayout->addWidget(m_hexRadio);
     controlLayout->addWidget(m_logModeCheck);
+    controlLayout->addWidget(m_wordWrapCheck);
     controlLayout->addStretch();
     controlLayout->addWidget(m_clearButton);
     controlLayout->addWidget(m_freezeButton);
@@ -88,6 +96,7 @@ void RawDataView::setupUI()
     // Set initial state
     onDisplayModeChanged();
     onLogModeChanged();
+    onWordWrapModeChanged();
 }
 
 void RawDataView::addReceivedData(const QByteArray& data)
@@ -131,7 +140,7 @@ void RawDataView::addDataToDisplay(const QByteArray& data, bool isReceived)
         }
         else
         {
-            displayText += formatDataAsAscii(data);
+            displayText += m_isWordWrapMode ? formatDataAsAsciiWithEscapes(data) : formatDataAsAscii(data);
         }
         displayText += "\n";
     }
@@ -144,7 +153,7 @@ void RawDataView::addDataToDisplay(const QByteArray& data, bool isReceived)
         }
         else
         {
-            displayText = formatDataAsAscii(data);
+            displayText = m_isWordWrapMode ? formatDataAsAsciiWithEscapes(data) : formatDataAsAscii(data);
         }
     }
     
@@ -211,9 +220,52 @@ void RawDataView::toggleFreeze(bool frozen)
 void RawDataView::onDisplayModeChanged()
 {
     m_isHexMode = m_hexRadio->isChecked();
+    // Enable/disable the word wrap checkbox only when in ASCII mode
+    m_wordWrapCheck->setEnabled(!m_isHexMode);
+    if (m_isHexMode) {
+        // Disable word wrap when switching to HEX mode
+        m_wordWrapCheck->setChecked(false);
+    }
 }
 
 void RawDataView::onLogModeChanged()
 {
     m_isLogMode = m_logModeCheck->isChecked();
+}
+
+void RawDataView::onWordWrapModeChanged()
+{
+    m_isWordWrapMode = m_wordWrapCheck->isChecked();
+    // Enable/disable the word wrap checkbox only when in ASCII mode
+    m_wordWrapCheck->setEnabled(!m_isHexMode);
+}
+
+QString RawDataView::formatDataAsAsciiWithEscapes(const QByteArray& data)
+{
+    QString result;
+    for (char c : data)
+    {
+        if (c >= 32 && c <= 126) // Printable ASCII
+        {
+            result += c;
+        }
+        else if (c == '\n')
+        {
+            result += '\n'; // Actual newline character
+        }
+        else if (c == '\r')
+        {
+            result += '\r'; // Actual carriage return
+        }
+        else if (c == '\t')
+        {
+            result += '\t'; // Actual tab character
+        }
+        else
+        {
+            // Non-printable character, show as hex
+            result += QString("\\x%1").arg((uint8_t)c, 2, 16, QChar('0')).toUpper();
+        }
+    }
+    return result;
 }

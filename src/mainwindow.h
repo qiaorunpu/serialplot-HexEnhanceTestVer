@@ -37,8 +37,8 @@
 #include "portcontrol.h"
 #include "commandpanel.h"
 #include "dataformatpanel.h"
-#include "plotcontrolpanel.h"
 #include "recordpanel.h"
+#include "plotcontrolpanel.h"
 #include "ui_about_dialog.h"
 #include "stream.h"
 #include "snapshotmanager.h"
@@ -48,12 +48,11 @@
 #include "samplecounter.h"
 #include "datatextview.h"
 #include "bpslabel.h"
+#include "rawdatarecorder.h"
 
 namespace Ui {
 class MainWindow;
 }
-
-class RawDataRecorder;
 
 class MainWindow : public QMainWindow
 {
@@ -124,7 +123,6 @@ private slots:
     void onPortToggled(bool open);
     void onSourceChanged(Source* source);
     void onNumOfSamplesChanged(int value);
-    void onNumPlotsChanged(int numPlots);
 
     void clearPlot();
     void onSpsChanged(float sps);

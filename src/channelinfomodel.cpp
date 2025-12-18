@@ -88,9 +88,8 @@ ChannelInfoModel::ChannelInfo::ChannelInfo(unsigned index)
     color = colors[index % NUMOF_COLORS];
     gain = 1.0;  // Default scale for typical sensor values
     offset = 0.0;
-    gainEn = false;
-    offsetEn = false;
-    plotIndex = 0;  // Default: all channels in plot 1 (0-based index)
+    gainEn = true;
+    offsetEn = true;
 }
 
 QString ChannelInfoModel::name(unsigned i) const
@@ -149,14 +148,6 @@ double ChannelInfoModel::offset (unsigned i) const
     return 0.0; // Default offset for invalid index
 }
 
-unsigned ChannelInfoModel::plotIndex(unsigned i) const
-{
-    if (i < (unsigned)infos.length()) {
-        return infos[i].plotIndex;
-    }
-    return 0; // Default plot index for invalid index
-}
-
 QStringList ChannelInfoModel::channelNames() const
 {
     QStringList r;
@@ -190,10 +181,6 @@ Qt::ItemFlags ChannelInfoModel::flags(const QModelIndex &index) const
     else if (index.column() == COLUMN_GAIN || index.column() == COLUMN_OFFSET)
     {
         return Qt::ItemIsEditable | Qt::ItemIsUserCheckable | Qt::ItemIsEnabled | Qt::ItemNeverHasChildren | Qt::ItemIsSelectable;
-    }
-    else if (index.column() == COLUMN_PLOT)
-    {
-        return Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemNeverHasChildren | Qt::ItemIsSelectable;
     }
 
     return Qt::NoItemFlags;
@@ -252,13 +239,6 @@ QVariant ChannelInfoModel::data(const QModelIndex &index, int role) const
         {
             return QVariant(info.offset);
         }
-    } // plot
-    else if (index.column() == COLUMN_PLOT)
-    {
-        if (role == Qt::DisplayRole || role == Qt::EditRole)
-        {
-            return QVariant(info.plotIndex + 1); // Display 1-based index
-        }
     }
 
     return QVariant();
@@ -285,10 +265,6 @@ QVariant ChannelInfoModel::headerData(int section, Qt::Orientation orientation, 
             else if (section == COLUMN_OFFSET)
             {
                 return tr("Offset");
-            }
-            else if (section == COLUMN_PLOT)
-            {
-                return tr("Plot Number");
             }
         }
     }
@@ -368,18 +344,6 @@ bool ChannelInfoModel::setData(const QModelIndex &index, const QVariant &value, 
             info.offsetEn = checked;
             if (_gainOrOffsetEn != checked) updateGainOrOffsetEn();
             r = true;
-        }
-    }
-    else if (index.column() == COLUMN_PLOT)
-    {
-        if (role == Qt::DisplayRole || role == Qt::EditRole)
-        {
-            unsigned plotIndex = value.toUInt();
-            if (plotIndex > 0) {
-                plotIndex--; // Convert from 1-based to 0-based
-                info.plotIndex = plotIndex;
-                r = true;
-            }
         }
     }
 
@@ -482,9 +446,11 @@ void ChannelInfoModel::resetColors()
 void ChannelInfoModel::resetVisibility(bool visible)
 {
     beginResetModel();
-    for (unsigned ci = 0; (int) ci < infos.length(); ci++)
+    for (unsigned ci = 0; ci < _numOfChannels; ci++)
     {
-        infos[ci].visibility = visible;
+        if (ci < (unsigned)infos.length()) {
+            infos[ci].visibility = visible;
+        }
     }
     endResetModel();
 }

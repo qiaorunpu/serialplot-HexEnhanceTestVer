@@ -83,7 +83,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // Configure the main splitter for better default proportions
     ui->mainSplitter->setStretchFactor(0, 3); // Plot area gets more space
-    ui->mainSplitter->setStretchFactor(1, 1); // Tab widget gets less space
+    ui->mainSplitter->setStretchFactor(1, 0); // Tab widget gets less space
     
     // Set splitter handle width for better usability  
     ui->mainSplitter->setHandleWidth(4);
@@ -97,7 +97,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->tabWidget->setCurrentIndex(0);
     auto tbPortControl = portControl.toolBar();
     addToolBar(tbPortControl);
-    addToolBar(recordPanel.toolbar());
 
     ui->plotToolBar->addAction(snapshotMan.takeSnapshotAction());
     menuBar()->insertMenu(ui->menuHelp->menuAction(), snapshotMan.menu());
@@ -120,6 +119,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMenu* tbMenu = plotMenu.addMenu("Toolbars");
     tbMenu->addAction(ui->plotToolBar->toggleViewAction());
     tbMenu->addAction(portControl.toolBar()->toggleViewAction());
+    // Note: Record toolbar removed - use Record tab panel buttons instead
 
     // init secondary plot menu
     auto group = new QActionGroup(this);
@@ -198,8 +198,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&plotControlPanel, &PlotControlPanel::lineThicknessChanged,
             plotMan, &PlotManager::setLineThickness);
 
-    connect(&plotControlPanel, &PlotControlPanel::numPlotsChanged,
-            this, &MainWindow::onNumPlotsChanged);
+    connect(&plotControlPanel, &PlotControlPanel::configureMappingRequested,
+            plotMan, &PlotManager::showChannelMappingDialog);
 
     // plot toolbar signals
     QObject::connect(ui->actionClear, SIGNAL(triggered(bool)),
@@ -442,12 +442,7 @@ void MainWindow::onNumOfSamplesChanged(int value)
     plotMan->replot();
 }
 
-void MainWindow::onNumPlotsChanged(int numPlots)
-{
-    if (plotMan && plotMan->mapping()) {
-        plotMan->mapping()->setNumPlots(numPlots);
-    }
-}
+
 
 void MainWindow::onSpsChanged(float sps)
 {

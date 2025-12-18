@@ -17,10 +17,8 @@
    <item>
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
-     
-     <!-- Commands Panel -->
      <widget class="QWidget" name="commandsWidget" native="true">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
@@ -31,35 +29,40 @@
       <layout class="QVBoxLayout" name="commandsLayout">
        <item>
         <widget class="QLabel" name="commandsLabel">
-         <property name="text">
-          <string>Commands</string>
-         </property>
          <property name="font">
           <font>
-           <weight>75</weight>
            <bold>true</bold>
           </font>
+         </property>
+         <property name="text">
+          <string>Commands</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QScrollArea" name="scrollArea">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
+          <enum>QFrame::Shape::StyledPanel</enum>
          </property>
          <property name="widgetResizable">
           <bool>true</bool>
          </property>
          <property name="alignment">
-          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+          <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
          </property>
          <widget class="QWidget" name="scrollAreaWidgetContents">
           <property name="geometry">
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>360</width>
-            <height>300</height>
+            <width>671</width>
+            <height>16</height>
            </rect>
           </property>
           <property name="sizePolicy">
@@ -73,33 +76,30 @@
        </item>
        <item>
         <widget class="QPushButton" name="pbNew">
-         <property name="text">
-          <string>New Command</string>
-         </property>
          <property name="toolTip">
           <string>Create a new command. (F12)</string>
          </property>
-         <property name="shortcut">
-          <string>F12</string>
+         <property name="text">
+          <string>New Command</string>
          </property>
          <property name="icon">
           <iconset theme="list-add"/>
+         </property>
+         <property name="shortcut">
+          <string>F12</string>
          </property>
         </widget>
        </item>
       </layout>
      </widget>
-     
-     <!-- Raw Data Panel will be added programmatically -->
      <widget class="QWidget" name="rawDataWidget" native="true">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-        <horstretch>2</horstretch>
-        <verstretch>0</verstretch>
+        <horstretch>0</horstretch>
+        <verstretch>10</verstretch>
        </sizepolicy>
       </property>
      </widget>
-     
     </widget>
    </item>
   </layout>

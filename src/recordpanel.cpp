@@ -41,8 +41,6 @@
 RecordPanel::RecordPanel(Stream* stream, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::RecordPanel),
-    recordToolBar(tr("Record Toolbar")),
-    recordAction(QIcon::fromTheme("media-record"), tr("Record"), this),
     recorder(this),
     rawRecorder(this),
     recordingTimer(this)
@@ -54,11 +52,6 @@ RecordPanel::RecordPanel(Stream* stream, QWidget *parent) :
     csvRecordingActive = false;
 
     ui->setupUi(this);
-
-    recordToolBar.setObjectName("tbRecord");
-
-    recordAction.setCheckable(true);
-    recordToolBar.addAction(&recordAction);
 
     // Connect new UI controls
     connect(ui->pbStartOverwrite, &QPushButton::clicked,
@@ -83,8 +76,6 @@ RecordPanel::RecordPanel(Stream* stream, QWidget *parent) :
             this, &RecordPanel::selectRawFile);
     connect(ui->pbBrowseCsv, &QPushButton::clicked,
             this, &RecordPanel::selectCsvFile);
-    connect(&recordAction, &QAction::triggered,
-            this, &RecordPanel::onRecord);
 
     connect(ui->cbRecordWhilePaused, SIGNAL(toggled(bool)),
             this, SIGNAL(recordPausedChanged(bool)));
@@ -141,11 +132,6 @@ RecordPanel::RecordPanel(Stream* stream, QWidget *parent) :
 RecordPanel::~RecordPanel()
 {
     delete ui;
-}
-
-QToolBar* RecordPanel::toolbar()
-{
-    return &recordToolBar;
 }
 
 bool RecordPanel::recordPaused()
@@ -273,16 +259,11 @@ void RecordPanel::onRecord(bool start)
         canceled = fn.isEmpty();
     }
 
-    if (canceled)
-    {
-        recordAction.setChecked(false);
-    }
-    else
+    if (!canceled)
     {
         overwriteSelected = false;
         // TODO: show more visible error message when recording fails
-        if (!startRecording(fn))
-            recordAction.setChecked(false);
+        startRecording(fn);
     }
 }
 
@@ -494,7 +475,6 @@ void RecordPanel::startRecording()
     isRecording = true;
     ui->pbStartOverwrite->setEnabled(false);
     ui->pbStopCapture->setEnabled(true);
-    recordAction.setChecked(true);
 
     // Setup timer and progress bar
     timerDuration = ui->spTimerSeconds->value();
@@ -553,7 +533,6 @@ void RecordPanel::stopRecording()
     ui->pbStopCapture->setEnabled(false);
     ui->progressBar->setValue(0);
     ui->progressBar->setFormat(QString("0 seconds"));
-    recordAction.setChecked(false);
 
     emit recordStopped();
 }

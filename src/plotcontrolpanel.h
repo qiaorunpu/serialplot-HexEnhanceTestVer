@@ -66,7 +66,7 @@ signals:
     void xScaleChanged(bool asIndex, double xMin = 0, double xMax = 1);
     void plotWidthChanged(double width);
     void lineThicknessChanged(int thickness);
-    void numPlotsChanged(int numPlots);
+    void configureMappingRequested();
 
 private:
     Ui::PlotControlPanel *ui;
@@ -96,6 +96,7 @@ private slots:
     void onXScaleChanged();
     void onPlotWidthChanged();
     void onColorSelect();
+    void onCheckBoxStateChanged(int state);
 };
 
 #endif // PLOTCONTROLPANEL_H

@@ -80,6 +80,8 @@ public slots:
     void setPlotWidth(double width);
     /// Set curve line thickness
     void setLineThickness(int thickness);
+    /// Show the channel plot mapping dialog
+    void showChannelMappingDialog();
 
 private:
     bool isMulti;
@@ -136,7 +138,6 @@ private slots:
                               const QVector<int> & roles = QVector<int> ());
     
     void onMappingChanged();
-    void showChannelMappingDialog();
 
     /// Synchronize Y axes to be the same width (so that X axes are in line)
     void syncScales();

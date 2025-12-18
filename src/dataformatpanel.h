@@ -22,15 +22,11 @@
 
 #include <stdint.h>
 #include <QWidget>
-#include <QButtonGroup>
 #include <QSerialPort>
 #include <QList>
 #include <QSettings>
 #include <QtGlobal>
-#include <QButtonGroup>
 
-#include "binarystreamreader.h"
-#include "asciireader.h"
 #include "demoreader.h"
 #include "framedreader.h"
 #include "datarecorder.h"
@@ -68,12 +64,9 @@ signals:
 
 private:
     Ui::DataFormatPanel *ui;
-    QButtonGroup readerSelectButtons;
 
     QSerialPort* serialPort;
 
-    BinaryStreamReader bsReader;
-    AsciiReader asciiReader;
     FramedReader framedReader;
     /// Currently selected reader
     AbstractReader* currentReader;

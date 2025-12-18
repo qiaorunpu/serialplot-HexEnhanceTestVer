@@ -117,7 +117,7 @@ unsigned ChecksumCalculator::getOutputSize(ChecksumAlgorithm algo)
 
 uint8_t ChecksumCalculator::calculateCRC8(const uint8_t* data, unsigned length)
 {
-    uint8_t crc = 0x00;
+    uint8_t crc = 0xFF;
     for (unsigned i = 0; i < length; i++)
     {
         crc ^= data[i];

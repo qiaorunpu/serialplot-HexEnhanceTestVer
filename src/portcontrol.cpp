@@ -370,12 +370,26 @@ void PortControl::openActionTriggered(bool checked)
 
 void PortControl::onCbPortListActivated(int index)
 {
+    // Sync toolbar combobox
     tbPortList.setCurrentIndex(index);
+    // Actually select the port
+    QString portName = ui->cbPortList->currentText();
+    if (!portName.isEmpty())
+    {
+        selectListedPort(portName);
+    }
 }
 
 void PortControl::onTbPortListActivated(int index)
 {
+    // Sync panel combobox
     ui->cbPortList->setCurrentIndex(index);
+    // Actually select the port
+    QString portName = tbPortList.currentText();
+    if (!portName.isEmpty())
+    {
+        selectListedPort(portName);
+    }
 }
 
 void PortControl::onPortError(QSerialPort::SerialPortError error)

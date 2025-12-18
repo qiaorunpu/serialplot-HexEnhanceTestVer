@@ -56,18 +56,21 @@ public slots:
 private slots:
     void onDisplayModeChanged();
     void onLogModeChanged();
+    void onWordWrapModeChanged();
 
 private:
     void setupUI();
     void addDataToDisplay(const QByteArray& data, bool isReceived);
     QString formatDataAsHex(const QByteArray& data);
     QString formatDataAsAscii(const QByteArray& data);
+    QString formatDataAsAsciiWithEscapes(const QByteArray& data);
     
     // UI components
     QPlainTextEdit* m_textDisplay;
     QRadioButton* m_asciiRadio;
     QRadioButton* m_hexRadio;
     QCheckBox* m_logModeCheck;
+    QCheckBox* m_wordWrapCheck;
     QPushButton* m_clearButton;
     QPushButton* m_freezeButton;
     
@@ -75,6 +78,7 @@ private:
     bool m_isHexMode;
     bool m_isLogMode;
     bool m_isFrozen;
+    bool m_isWordWrapMode;
 };
 
 #endif // RAWDATAVIEW_H

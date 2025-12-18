@@ -133,6 +133,22 @@
          </spacer>
         </item>
         <item>
+         <widget class="QPushButton" name="pbConfigureMapping">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Configure how channels are assigned to different plots</string>
+          </property>
+          <property name="text">
+           <string>Configure Channels Plot Mapping...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QToolButton" name="tbShowAll">
           <property name="toolTip">
            <string>Show all channels</string>
@@ -195,26 +211,6 @@
      <property name="fieldGrowthPolicy">
       <enum>QFormLayout::FieldsStayAtSizeHint</enum>
      </property>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_numplots">
-       <property name="text">
-        <string>Number of Plots:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QSpinBox" name="spNumPlots">
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>32</number>
-       </property>
-       <property name="value">
-        <number>1</number>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_3">
        <property name="toolTip">
@@ -418,14 +414,14 @@
        </item>
       </layout>
      </item>
-     <item row="7" column="0">
+     <item row="5" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
         <string>Select Range Preset:</string>
        </property>
       </widget>
      </item>
-     <item row="7" column="1">
+     <item row="5" column="1">
       <widget class="QComboBox" name="cbRangePresets"/>
      </item>
      <item row="2" column="0">
