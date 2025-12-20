@@ -64,6 +64,12 @@ You can use git to download SerialPlot source code.
     cmake ..
     make -j
 
+## Documentation
+
+For developers working with the Qt framework features in this project:
+
+* [Qt Signals and Slots Mechanism](./docs/QT_SIGNALS_SLOTS.md) - Comprehensive guide explaining Qt's signal-slot mechanism and the purpose of `private slots:`
+
 ## License
 
 This software is licensed under GPLv3 excluding some third party
