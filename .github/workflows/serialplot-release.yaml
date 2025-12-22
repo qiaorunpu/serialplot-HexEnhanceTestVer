@@ -24,7 +24,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: jurplel/install-qt-action@v4
         with:
-          version: 6.4.0
+          version: 6.8.3
           modules: qtserialport
           arch: win64_mingw
 
