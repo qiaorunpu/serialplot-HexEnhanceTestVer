@@ -70,7 +70,7 @@ PlotControlPanel::PlotControlPanel(QWidget *parent) :
     resetColorsAct(tr("Reset Colors"), this),
     showAllAct(tr("Show All"), this),
     hideAllAct(tr("Hide All"), this),
-    resetGainsAct(tr("Reset All Gain"), this),
+    resetGainsAct(tr("Reset All Scale"), this),
     resetOffsetsAct(tr("Reset All Offset"), this),
     resetMenu(tr("Reset Menu"), this)
 {
@@ -237,7 +237,7 @@ bool PlotControlPanel::askNSConfirmation(int value)
                    this);
 
     auto cb = new QCheckBox("Don't show this again.");
-    connect(cb, &QCheckBox::stateChanged, [this](int state)
+    connect(cb, &QCheckBox::checkStateChanged, [this](int state)
             {
                 warnNumOfSamples = (state == Qt::Unchecked);
             });

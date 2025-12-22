@@ -34,7 +34,7 @@ public:
     {
         COLUMN_NAME = 0,
         COLUMN_VISIBILITY,
-        COLUMN_GAIN,
+        COLUMN_GAIN,  // Actually "Scale" - data is divided by this value
         COLUMN_OFFSET,
         COLUMN_COUNT            // MUST be last
     };
@@ -46,11 +46,11 @@ public:
     QString name     (unsigned i) const;
     QColor  color    (unsigned i) const;
     bool    isVisible(unsigned i) const;
-    bool    gainEn   (unsigned i) const;
-    double  gain     (unsigned i) const;
+    bool    gainEn   (unsigned i) const;  // Returns if scale (division) is enabled
+    double  gain     (unsigned i) const;  // Returns scale value (data will be divided by this)
     bool    offsetEn (unsigned i) const;
     double  offset   (unsigned i) const;
-    /// Returns true if any of the channels have gain or offset enabled
+    /// Returns true if any of the channels have scale (gain) or offset enabled
     bool gainOrOffsetEn() const;
     /// Returns a list of channel names
     QStringList channelNames() const;
@@ -76,7 +76,7 @@ public slots:
     void resetNames();
     /// reset all channel colors
     void resetColors();
-    /// reset all channel gain values and disables gains
+    /// reset all channel scale (gain) values to 1.0 and disables scale
     void resetGains();
     /// reset all channel offset values and disables offsets
     void resetOffsets();
@@ -91,7 +91,7 @@ private:
         QString name;
         bool visibility;
         QColor color;
-        double gain, offset;
+        double gain, offset;  // gain is actually "scale" - data is divided by this value
         bool gainEn, offsetEn;
     };
 

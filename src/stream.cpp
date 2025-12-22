@@ -181,20 +181,20 @@ const SamplePack* Stream::applyGainOffset(const SamplePack& pack) const
     for (unsigned ci = 0; ci < numChannels(); ci++)
     {
         // TODO: we could use some kind of map (int32, int64 would suffice) to speed things up
-        bool gainEn = infoModel()->gainEn(ci);
+        bool scaleEn = infoModel()->gainEn(ci);  // Scale enabled (formerly gain)
         bool offsetEn = infoModel()->offsetEn(ci);
-        if (gainEn || offsetEn)
+        if (scaleEn || offsetEn)
         {
             double* mdata = mPack->data(ci);
 
-            double gain = infoModel()->gain(ci);
+            double scale = infoModel()->gain(ci);  // Scale value (formerly gain)
             double offset = infoModel()->offset(ci);
 
-            if (gainEn)
+            if (scaleEn)
             {
                 for (unsigned i = 0; i < ns; i++)
                 {
-                    mdata[i] *= gain;
+                    mdata[i] /= scale;  // Changed from multiplication to division
                 }
             }
             if (offsetEn)
@@ -225,7 +225,7 @@ void Stream::feedIn(const SamplePack& pack)
         // static_cast<RingBuffer*>(xData)->addSamples(pack.xData(), ns);
     }
 
-    // modified pack that gain and offset is applied to
+    // modified pack that scale (division) and offset is applied to
     const SamplePack* mPack = nullptr;
     if (infoModel()->gainOrOffsetEn())
         mPack = applyGainOffset(pack);

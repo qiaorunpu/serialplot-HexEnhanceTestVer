@@ -99,6 +99,7 @@ qt_add_executable(${PROGRAM_NAME} WIN32
   src/demoreadersettings.cpp
   src/framedreader.cpp
   src/framedreadersettings.cpp
+  src/kmpmatcher.cpp
   src/channelmapping.cpp
   src/checksumcalculator.cpp
   src/channelmappingdialog.cpp

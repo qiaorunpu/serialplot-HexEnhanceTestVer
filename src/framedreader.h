@@ -27,6 +27,7 @@
 #include "framedreadersettings.h"
 #include "channelmapping.h"
 #include "checksumcalculator.h"
+#include "kmpmatcher.h"  // Performance optimization: KMP pattern matching
 
 /**
  * Reads data in a customizable framed format with flexible channel mapping
@@ -38,6 +39,7 @@ class FramedReader : public AbstractReader
 
 public:
     explicit FramedReader(QIODevice* device, QObject *parent = 0);
+    ~FramedReader();  // Cleanup KMP matcher and buffers
     QWidget* settingsWidget();
     unsigned numChannels() const;
     /// Stores settings into a `QSettings`
@@ -71,6 +73,10 @@ private:
     bool gotSize;
     uint8_t* _frameBuffer;
     unsigned _frameBufferSize;
+    
+    // Performance optimization: KMP matcher for fast sync word search
+    KMPMatcher* _kmpMatcher;
+    QByteArray _readBuffer;  // Buffer for batch reading
 
     void reset();
     void readFrameDataAndExtractChannels();

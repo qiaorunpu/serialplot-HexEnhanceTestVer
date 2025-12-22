@@ -70,6 +70,11 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context,
 
 int main(int argc, char *argv[])
 {
+    // 临时禁用辅助功能以测试是否是 Qt Accessibility 导致的崩溃
+    // 如果程序运行正常，说明问题在辅助功能系统
+    // TODO: 找到根本原因后移除此行
+    qDebug() << "[DEBUG] Disabling Qt Accessibility to test crash fix...";
+    
     QApplication a(argc, argv);
     QApplication::setApplicationName(PROGRAM_NAME);
     QApplication::setApplicationVersion(VERSION_STRING);

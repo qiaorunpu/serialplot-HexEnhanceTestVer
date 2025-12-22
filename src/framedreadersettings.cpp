@@ -189,11 +189,19 @@ void FramedReaderSettings::saveSettings(QSettings* settings)
     settings->setValue(SG_CustomFrame_Checksum, ui->cbChecksum->isChecked());
     settings->setValue(SG_CustomFrame_DebugMode, ui->cbDebugMode->isChecked());
 
-    // Save checksum configuration
-    settings->setValue(SG_CustomFrame_ChecksumAlgorithm, ChecksumCalculator::algorithmToString(_checksumConfig.algorithm));
-    settings->setValue(SG_CustomFrame_ChecksumStartByte, _checksumConfig.startByte);
-    settings->setValue(SG_CustomFrame_ChecksumEndByte, _checksumConfig.endByte);
-    settings->setValue(SG_CustomFrame_ChecksumEndianness, _checksumConfig.isLittleEndian ? "little" : "big");
+    // Save checksum configuration - 添加条件判断
+    if (_checksumConfig.enabled && _checksumConfig.algorithm != ChecksumAlgorithm::None)
+    {
+        settings->setValue(SG_CustomFrame_ChecksumAlgorithm, ChecksumCalculator::algorithmToString(_checksumConfig.algorithm));
+        settings->setValue(SG_CustomFrame_ChecksumStartByte, _checksumConfig.startByte);
+        settings->setValue(SG_CustomFrame_ChecksumEndByte, _checksumConfig.endByte);
+        settings->setValue(SG_CustomFrame_ChecksumEndianness, _checksumConfig.isLittleEndian ? "little" : "big");
+    }
+    else
+    {
+        // 保存 None 以明确表示未启用
+        settings->setValue(SG_CustomFrame_ChecksumAlgorithm, "None");
+    }
 
     // Save channel mapping
     settings->beginGroup(SG_CustomFrame_ChannelMapping);
@@ -249,13 +257,25 @@ void FramedReaderSettings::loadSettings(QSettings* settings)
     ui->cbDebugMode->setChecked(
         settings->value(SG_CustomFrame_DebugMode, ui->cbDebugMode->isChecked()).toBool());
 
-    // Load checksum configuration
-    _checksumConfig.algorithm = ChecksumCalculator::stringToAlgorithm(
-        settings->value(SG_CustomFrame_ChecksumAlgorithm, "None").toString());
-    _checksumConfig.startByte = settings->value(SG_CustomFrame_ChecksumStartByte, 0).toInt();
-    _checksumConfig.endByte = settings->value(SG_CustomFrame_ChecksumEndByte, 0).toInt();
-    QString endiannessStr = settings->value(SG_CustomFrame_ChecksumEndianness, "little").toString();
-    _checksumConfig.isLittleEndian = (endiannessStr == "little");
+    // Load checksum configuration - 添加验证
+    QString algoStr = settings->value(SG_CustomFrame_ChecksumAlgorithm, "None").toString();
+    _checksumConfig.algorithm = ChecksumCalculator::stringToAlgorithm(algoStr);
+    
+    // 只在算法有效时加载其他配置
+    if (_checksumConfig.algorithm != ChecksumAlgorithm::None)
+    {
+        _checksumConfig.startByte = settings->value(SG_CustomFrame_ChecksumStartByte, 0).toInt();
+        _checksumConfig.endByte = settings->value(SG_CustomFrame_ChecksumEndByte, 0).toInt();
+        QString endiannessStr = settings->value(SG_CustomFrame_ChecksumEndianness, "little").toString();
+        _checksumConfig.isLittleEndian = (endiannessStr == "little");
+    }
+    else
+    {
+        // 重置为默认值
+        _checksumConfig.startByte = 0;
+        _checksumConfig.endByte = 0;
+        _checksumConfig.isLittleEndian = true;
+    }
 
     // Load channel mapping
     settings->beginGroup(SG_CustomFrame_ChannelMapping);

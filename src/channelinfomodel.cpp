@@ -265,7 +265,7 @@ QVariant ChannelInfoModel::headerData(int section, Qt::Orientation orientation, 
             }
             else if (section == COLUMN_GAIN)
             {
-                return tr("Gain");
+                return tr("Scale");
             }
             else if (section == COLUMN_OFFSET)
             {

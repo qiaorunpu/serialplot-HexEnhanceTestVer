@@ -28,21 +28,53 @@ CommandWidget::CommandWidget(QWidget *parent) :
     ui(new Ui::CommandWidget),
     _sendAction(this)
 {
-    ui->setupUi(this);
+    qDebug() << "CommandWidget: Constructor started";
+    qDebug() << "  - parent=" << parent;
+    qDebug() << "  - parent valid?" << (parent != nullptr);
+    qDebug() << "  - this=" << this;
+    qDebug() << "  - ui ptr=" << ui;
+    qDebug() << "  - _sendAction ptr=" << &_sendAction;
+    
+    qDebug() << "CommandWidget: About to call setupUi...";
+    try {
+        ui->setupUi(this);
+        qDebug() << "CommandWidget: setupUi completed successfully";
+    } catch (const std::exception& e) {
+        qCritical() << "CommandWidget: Exception in setupUi:" << e.what();
+        throw;
+    } catch (...) {
+        qCritical() << "CommandWidget: Unknown exception in setupUi";
+        throw;
+    }
+    
+    qDebug() << "CommandWidget: Connecting signals...";
+    qDebug() << "  - pbDelete valid?" << (ui->pbDelete != nullptr);
+    qDebug() << "  - pbSend valid?" << (ui->pbSend != nullptr);
+    qDebug() << "  - pbASCII valid?" << (ui->pbASCII != nullptr);
+    qDebug() << "  - leName valid?" << (ui->leName != nullptr);
 
     connect(ui->pbDelete, &QPushButton::clicked, this, &CommandWidget::onDeleteClicked);
+    qDebug() << "  - pbDelete connected";
     connect(ui->pbSend, &QPushButton::clicked, this, &CommandWidget::onSendClicked);
+    qDebug() << "  - pbSend connected";
     connect(ui->pbASCII, &QPushButton::toggled, this, &CommandWidget::onASCIIToggled);
+    qDebug() << "  - pbASCII connected";
     connect(ui->leName, &QLineEdit::textChanged, [this](QString text)
             {
                 this->_sendAction.setText(text);
             });
+    qDebug() << "  - leName connected";
     connect(&_sendAction, &QAction::triggered, this, &CommandWidget::onSendClicked);
+    qDebug() << "  - sendAction connected";
+    
+    qDebug() << "CommandWidget: Constructor finished successfully";
 }
 
 CommandWidget::~CommandWidget()
 {
+    qDebug() << "CommandWidget: Destructor called for" << this;
     delete ui;
+    qDebug() << "CommandWidget: Destructor finished";
 }
 
 void CommandWidget::onDeleteClicked()
@@ -97,19 +129,27 @@ bool CommandWidget::isASCIIMode()
 
 void CommandWidget::setASCIIMode(bool enabled)
 {
+    qDebug() << "CommandWidget::setASCIIMode: this=" << this << ", enabled=" << enabled;
     if (enabled)
     {
+        qDebug() << "  - Checking pbASCII...";
         ui->pbASCII->setChecked(true);
+        qDebug() << "  - pbASCII checked";
     }
     else
     {
+        qDebug() << "  - Checking pbHEX...";
         ui->pbHEX->setChecked(true);
+        qDebug() << "  - pbHEX checked";
     }
 }
 
 void CommandWidget::setName(QString name)
 {
+    qDebug() << "CommandWidget::setName: this=" << this << ", name=" << name;
+    qDebug() << "  - leName ptr=" << ui->leName;
     ui->leName->setText(name);
+    qDebug() << "  - setText completed";
 }
 
 QString CommandWidget::name()
@@ -134,6 +174,9 @@ QString CommandWidget::commandText()
 
 void CommandWidget::setCommandText(QString str)
 {
+    qDebug() << "CommandWidget::setCommandText: this=" << this << ", length=" << str.length();
+    qDebug() << "  - leCommand ptr=" << ui->leCommand;
     ui->leCommand->selectAll();
     ui->leCommand->insert(str);
+    qDebug() << "  - Text inserted";
 }

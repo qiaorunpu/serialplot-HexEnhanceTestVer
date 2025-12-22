@@ -583,16 +583,27 @@ void MainWindow::saveAllSettings(QSettings* settings)
 
 void MainWindow::loadAllSettings(QSettings* settings)
 {
+    qDebug() << "MainWindow::loadAllSettings: Starting to load settings";
     loadMWSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: MW settings loaded";
     portControl.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Port control loaded";
     dataFormatPanel.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Data format loaded";
     stream.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Stream loaded";
     plotControlPanel.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Plot control loaded";
     plotMenu.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Plot menu loaded";
     commandPanel.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Command panel loaded";
     recordPanel.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Record panel loaded";
     textView.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: Text view loaded";
     updateCheckDialog.loadSettings(settings);
+    qDebug() << "MainWindow::loadAllSettings: All settings loaded successfully";
 }
 
 void MainWindow::saveMWSettings(QSettings* settings)

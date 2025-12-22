@@ -21,12 +21,14 @@
 #include <QGroupBox>
 #include <QButtonGroup>
 #include <QScrollBar>
+#include <QTextCursor>
 
 RawDataView::RawDataView(QWidget *parent)
     : QWidget(parent),
       m_isHexMode(false),
       m_isLogMode(false),
-      m_isFrozen(false)
+      m_isFrozen(false),
+      m_autoLinefeed(true)
 {
     setupUI();
 }
@@ -58,6 +60,13 @@ void RawDataView::setupUI()
     connect(m_logModeCheck, &QCheckBox::toggled,
             this, &RawDataView::onLogModeChanged);
     
+    // Auto Linefeed checkbox
+    m_autoLinefeedCheck = new QCheckBox("Auto Linefeed");
+    m_autoLinefeedCheck->setChecked(true); // Default ON
+    m_autoLinefeedCheck->setToolTip("Automatically add line breaks in ASCII mode");
+    connect(m_autoLinefeedCheck, &QCheckBox::toggled,
+            [this](bool checked) { m_autoLinefeed = checked; });
+    
     // Control buttons
     m_clearButton = new QPushButton("Clear");
     m_freezeButton = new QPushButton("Freeze");
@@ -72,6 +81,7 @@ void RawDataView::setupUI()
     controlLayout->addWidget(m_asciiRadio);
     controlLayout->addWidget(m_hexRadio);
     controlLayout->addWidget(m_logModeCheck);
+    controlLayout->addWidget(m_autoLinefeedCheck);
     controlLayout->addStretch();
     controlLayout->addWidget(m_clearButton);
     controlLayout->addWidget(m_freezeButton);
@@ -149,7 +159,19 @@ void RawDataView::addDataToDisplay(const QByteArray& data, bool isReceived)
     }
     
     // Add to text display
-    m_textDisplay->appendPlainText(displayText.trimmed());
+    // In ASCII mode with auto linefeed, the text may contain actual newlines
+    // Use moveCursor and insertPlainText to preserve formatting
+    if (!m_isHexMode && m_autoLinefeed && !displayText.isEmpty())
+    {
+        QTextCursor cursor = m_textDisplay->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        m_textDisplay->setTextCursor(cursor);
+        m_textDisplay->insertPlainText(displayText);
+    }
+    else
+    {
+        m_textDisplay->appendPlainText(displayText.trimmed());
+    }
     
     // Auto-scroll to bottom
     QScrollBar* scrollBar = m_textDisplay->verticalScrollBar();
@@ -178,11 +200,25 @@ QString RawDataView::formatDataAsAscii(const QByteArray& data)
         }
         else if (c == '\n')
         {
-            result += "\\n";
+            if (m_autoLinefeed)
+            {
+                result += '\n';  // Actually insert newline
+            }
+            else
+            {
+                result += "\\n";  // Show as escaped
+            }
         }
         else if (c == '\r')
         {
-            result += "\\r";
+            if (m_autoLinefeed)
+            {
+                // Ignore CR in auto linefeed mode (CRLF will be handled by LF)
+            }
+            else
+            {
+                result += "\\r";
+            }
         }
         else if (c == '\t')
         {

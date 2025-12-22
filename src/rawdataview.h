@@ -68,6 +68,7 @@ private:
     QRadioButton* m_asciiRadio;
     QRadioButton* m_hexRadio;
     QCheckBox* m_logModeCheck;
+    QCheckBox* m_autoLinefeedCheck;
     QPushButton* m_clearButton;
     QPushButton* m_freezeButton;
     
@@ -75,6 +76,7 @@ private:
     bool m_isHexMode;
     bool m_isLogMode;
     bool m_isFrozen;
+    bool m_autoLinefeed;
 };
 
 #endif // RAWDATAVIEW_H

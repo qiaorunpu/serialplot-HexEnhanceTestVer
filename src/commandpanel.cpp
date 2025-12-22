@@ -70,9 +70,42 @@ CommandPanel::~CommandPanel()
 
 CommandWidget* CommandPanel::newCommand()
 {
-    auto command = new CommandWidget();
+    qDebug() << "\n>>> CommandPanel::newCommand: ENTER";
+    qDebug() << "  - ui ptr=" << ui;
+    qDebug() << "  - ui valid?" << (ui != nullptr);
+    
+    if (ui && ui->scrollAreaWidgetContents) {
+        qDebug() << "  - scrollAreaWidgetContents ptr=" << ui->scrollAreaWidgetContents;
+        qDebug() << "  - scrollAreaWidgetContents layout=" << ui->scrollAreaWidgetContents->layout();
+    } else {
+        qCritical() << "  ERROR: UI not initialized!";
+        return nullptr;
+    }
+    
+    qDebug() << "  Creating CommandWidget with parent...";
+    CommandWidget* command = nullptr;
+    try {
+        // 修复：传入父窗口避免辅助功能系统问题
+        command = new CommandWidget(ui->scrollAreaWidgetContents);
+        qDebug() << "  CommandWidget created successfully, ptr=" << command;
+    } catch (const std::exception& e) {
+        qCritical() << "  EXCEPTION during CommandWidget creation:" << e.what();
+        return nullptr;
+    } catch (...) {
+        qCritical() << "  UNKNOWN EXCEPTION during CommandWidget creation";
+        return nullptr;
+    }
+    
+    if (!command) {
+        qCritical() << "  ERROR: CommandWidget is nullptr after creation!";
+        return nullptr;
+    }
+    
+    qDebug() << "  Widget created, setting name...";
+    qDebug() << "  Current command_name_counter=" << command_name_counter;
     command_name_counter++;
     command->setName(tr("Command ") + QString::number(command_name_counter));
+    qDebug() << "CommandPanel::newCommand: Name set";
     ui->scrollAreaWidgetContents->layout()->addWidget(command);
     command->setFocusToEdit();
     connect(command, &CommandWidget::sendCommand, this, &CommandPanel::sendCommand);
@@ -168,32 +201,100 @@ void CommandPanel::loadSettings(QSettings* settings)
 
     // load commands
     settings->beginGroup(SettingGroup_Commands);
+    
+    // 先检查实际有多少个命令条目
+    qDebug() << "\n=== CommandPanel::loadSettings: Checking INI file consistency ===";
+    qDebug() << "  - All keys in Commands group:" << settings->childKeys();
+    qDebug() << "  - All groups in Commands:" << settings->childGroups();
+    
     unsigned size = settings->beginReadArray(SG_Commands_Command);
-
+    qDebug() << "\nCommandPanel::loadSettings: INI says" << size << "commands to load";
+    
+    // 检查实际有多少个条目存在
+    unsigned actualCount = 0;
+    for (unsigned i = 1; i <= 20; i++) {
+        settings->setArrayIndex(i-1);
+        if (settings->contains(SG_Commands_Name) || settings->contains(SG_Commands_Command)) {
+            actualCount = i;
+        }
+    }
+    qDebug() << "CommandPanel::loadSettings: Actually found" << actualCount << "command entries in INI";
+    
+    if (size != actualCount) {
+        qWarning() << "\n!!! DATA INCONSISTENCY DETECTED !!!";
+        qWarning() << "  - 'size' field in INI says:" << size;
+        qWarning() << "  - Actual entries found:" << actualCount;
+        qWarning() << "  - Will only load" << size << "commands (extra" << (actualCount - size) << "entries will be ignored)";
+        qWarning() << "  - This may cause unexpected behavior!\n";
+    }
+    
+    qDebug() << "CommandPanel::loadSettings: Loading" << size << "commands";
     for (unsigned i = 0; i < size; i ++)
     {
+        qDebug() << "\n=== CommandPanel::loadSettings: Processing command index" << i << "===";
         settings->setArrayIndex(i);
+        
+        // 显示这个条目的所有数据
+        qDebug() << "  INI data for index" << i << ":";
+        QStringList keys = settings->childKeys();
+        for (const QString& key : keys) {
+            qDebug() << "    -" << key << "=" << settings->value(key);
+        }
+        
+        qDebug() << "  Creating widget...";
         auto command = newCommand();
+        if (!command) {
+            qCritical() << "  ERROR: Failed to create command widget!";
+            continue;
+        }
+        qDebug() << "  Widget created successfully, ptr=" << command;
 
         // load command name
         QString name = settings->value(SG_Commands_Name, "").toString();
-        if (!name.isEmpty()) command->setName(name);
+        qDebug() << "  Setting name:" << name;
+        if (!name.isEmpty()) {
+            command->setName(name);
+            qDebug() << "  Name set successfully";
+        } else {
+            qWarning() << "  WARNING: Empty command name for index" << i;
+        }
 
         // Important: type should be set before command data for correct validation
         QString type = settings->value(SG_Commands_Type, "").toString();
+        qDebug() << "  Command type:" << type;
         if (type == "ascii")
         {
+            qDebug() << "  Setting ASCII mode...";
             command->setASCIIMode(true);
+            qDebug() << "  ASCII mode set";
         }
         else if (type == "hex")
         {
+            qDebug() << "  Setting HEX mode...";
             command->setASCIIMode(false);
-        } // else unchanged
+            qDebug() << "  HEX mode set";
+        }
+        else
+        {
+            qDebug() << "  Mode unchanged (type was:" << type << ")";
+        }
 
         // load command data
-        command->setCommandText(settings->value(SG_Commands_Data, "").toString());
+        QString cmdData = settings->value(SG_Commands_Data, "").toString();
+        qDebug() << "  Command data length:" << cmdData.length();
+        qDebug() << "  Command data (first 50 chars):" << cmdData.left(50);
+        command->setCommandText(cmdData);
+        qDebug() << "  Command data set";
+        qDebug() << "=== Command" << i << "loaded successfully ===\n";
     }
 
     settings->endArray();
     settings->endGroup();
+    
+    qDebug() << "\nCommandPanel::loadSettings: Completed successfully";
+    qDebug() << "  - Total commands loaded:" << commands.size();
+    qDebug() << "  - Expected:" << size;
+    if (commands.size() != size) {
+        qWarning() << "  WARNING: Mismatch between expected (" << size << ") and actual (" << commands.size() << ") loaded commands!";
+    }
 }

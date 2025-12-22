@@ -89,6 +89,7 @@ ChecksumAlgorithm ChecksumCalculator::stringToAlgorithm(const QString& str)
     if (str == "SUM24") return ChecksumAlgorithm::SUM24;
     if (str == "SUM32") return ChecksumAlgorithm::SUM32;
     if (str == "XOR8") return ChecksumAlgorithm::XOR8;
+
     return ChecksumAlgorithm::None;
 }
 
@@ -117,7 +118,7 @@ unsigned ChecksumCalculator::getOutputSize(ChecksumAlgorithm algo)
 
 uint8_t ChecksumCalculator::calculateCRC8(const uint8_t* data, unsigned length)
 {
-    uint8_t crc = 0x00;
+    uint8_t crc = 0xFF;
     for (unsigned i = 0; i < length; i++)
     {
         crc ^= data[i];
