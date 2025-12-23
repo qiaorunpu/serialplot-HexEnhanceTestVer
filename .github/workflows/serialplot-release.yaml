@@ -24,20 +24,13 @@ jobs:
         if: runner.os == 'Windows'
         uses: jurplel/install-qt-action@v4
         with:
-          version: 6.8.3
+          version: 6.4.0
           modules: qtserialport
           arch: win64_mingw
 
-      - name: Install Qt on Ubuntu
-        if: runner.os == 'Linux'
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: 6.7.3  # 或使用 6.8.0
-          modules: 'qtserialport qtsvg'
-          
       - name: Install dependencies on Ubuntu
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y --no-install-recommends libgl1-mesa-dev
+        run: sudo apt-get install -y --no-install-recommends libgl1-mesa-dev qt6-base-dev libqt6serialport6-dev libqt6svg6-dev
 
       - name: Check out repository code
         uses: actions/checkout@v4
