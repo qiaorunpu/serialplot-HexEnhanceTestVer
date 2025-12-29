@@ -6,22 +6,38 @@
 
 This repository contains the following data flow analysis documents:
 
-### 1. DATA_FLOW_ANALYSIS.md (中文版)
+### 1. DATA_FLOW_VISUALIZATION.md (可视化图表 / Visual Diagrams) ⭐ 推荐开始 / Recommended Start
+数据流可视化图表、架构图、时序图、故障排查指南
+
+Visual diagrams, architecture charts, sequence diagrams, troubleshooting guide
+
+### 2. DATA_FLOW_ANALYSIS.md (中文详细版 / Chinese Detailed)
 SerialPlot 数据流详细分析文档（中文）
 
 Comprehensive data flow analysis for SerialPlot (Chinese)
 
-### 2. DATA_FLOW_ANALYSIS_EN.md (English Version)
+### 3. DATA_FLOW_ANALYSIS_EN.md (English Detailed)
 SerialPlot Data Flow Analysis (English)
 
 Comprehensive data flow analysis for SerialPlot (English)
 
 ## 文档内容 / Document Content
 
-两份文档包含相同的内容，只是语言不同：
+### 可视化文档 (Visualization Document)
+**DATA_FLOW_VISUALIZATION.md** 包含：
 
-Both documents contain the same content in different languages:
+Contains:
+- 📊 **8层架构图** / 8-Layer architecture diagram
+- 🔗 **类关系图** / Class relationship diagram
+- ⏱️ **时序图** / Sequence diagram
+- 🎯 **接口定义** / Interface definitions
+- 🚀 **扩展指南** / Extension guide
+- 🐛 **故障排查** / Troubleshooting
 
+### 详细分析文档 (Detailed Analysis Documents)
+**DATA_FLOW_ANALYSIS.md** 和 **DATA_FLOW_ANALYSIS_EN.md** 包含相同内容：
+
+Both contain the same content:
 - 📊 **完整的数据流架构图** / Complete data flow architecture diagram
 - 🔍 **11个核心组件的详细分析** / Detailed analysis of 11 core components
 - 🔗 **完整的函数调用链** / Complete function call chain
@@ -51,25 +67,44 @@ QSerialPort → AbstractReader → Source::feedOut() → Sink::feedIn()
 
 ## 使用建议 / Usage Recommendations
 
-如果您想：
+### 🚀 快速开始 (Quick Start)
+**推荐从这里开始** / **Start here**: `DATA_FLOW_VISUALIZATION.md`
+- 快速了解整体架构 / Quick overview of architecture
+- 清晰的可视化图表 / Clear visual diagrams
 
-If you want to:
+### 📚 根据需求选择 (Choose by Need)
 
-- 📖 **了解数据如何流动** / Understand how data flows
-  - 阅读"数据流架构图"和"完整数据流调用链"部分
-  - Read "Data Flow Architecture Diagram" and "Complete Data Flow Call Chain" sections
+如果您想 / If you want to:
+
+- 📖 **快速理解整体流程** / Quick understanding of overall flow
+  - 👉 查看 `DATA_FLOW_VISUALIZATION.md` 的简化数据流图
+  - 👉 View the simplified flow diagram in `DATA_FLOW_VISUALIZATION.md`
+
+- 🔍 **查找具体代码位置** / Find specific code locations
+  - 👉 查看 `DATA_FLOW_ANALYSIS.md` (中文) 或 `DATA_FLOW_ANALYSIS_EN.md` (English)
+  - 👉 Contains exact file paths and line numbers
 
 - 🔧 **添加新的数据格式** / Add new data formats
-  - 参考"AbstractReader系列"和"策略模式"部分
-  - Refer to "AbstractReader Series" and "Strategy Pattern" sections
+  - 👉 查看 `DATA_FLOW_VISUALIZATION.md` 的扩展指南
+  - 👉 Check extension guide in `DATA_FLOW_VISUALIZATION.md`
+  - 👉 参考 `DATA_FLOW_ANALYSIS.md` 的"AbstractReader系列"
+  - 👉 Refer to "AbstractReader Series" in detailed docs
 
 - 🚀 **优化性能** / Optimize performance
-  - 查看"性能优化点"部分
-  - Check "Performance Optimization Points" section
+  - 👉 查看 `DATA_FLOW_VISUALIZATION.md` 的性能关键点
+  - 👉 Check performance critical points
+  - 👉 查看详细文档的"性能优化点"部分
+  - 👉 See "Performance Optimization Points" in detailed docs
 
-- 🏗️ **理解架构设计** / Understand architecture design
-  - 阅读"Source-Sink架构"和"关键设计模式"部分
-  - Read "Source-Sink Architecture" and "Key Design Patterns" sections
+- 🐛 **排查问题** / Troubleshoot issues
+  - 👉 查看 `DATA_FLOW_VISUALIZATION.md` 的故障排查部分
+  - 👉 Check troubleshooting section in visualization doc
+
+- 🏗️ **深入理解架构** / Deep dive into architecture
+  - 👉 阅读 `DATA_FLOW_ANALYSIS.md` 或 `DATA_FLOW_ANALYSIS_EN.md`
+  - 👉 Read the detailed analysis documents
+  - 👉 包含设计模式、完整调用链等
+  - 👉 Contains design patterns, complete call chains, etc.
 
 ## 技术栈 / Technology Stack
 
