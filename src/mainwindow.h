@@ -48,6 +48,7 @@
 #include "samplecounter.h"
 #include "datatextview.h"
 #include "bpslabel.h"
+#include "autonavpanel.h"
 
 namespace Ui {
 class MainWindow;
@@ -95,6 +96,7 @@ private:
     DataTextView textView;
     UpdateCheckDialog updateCheckDialog;
     BPSLabel bpsLabel;
+    AutoNavPanel* autoNavPanel;
 
     // Raw data recorder pointer for active recording
     RawDataRecorder* activeRawRecorder;

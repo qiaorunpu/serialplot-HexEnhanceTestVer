@@ -94,6 +94,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->tabWidget->insertTab(3, &commandPanel, "Commands");
     ui->tabWidget->insertTab(4, &recordPanel, "Record");
     ui->tabWidget->insertTab(5, &textView, "Text View");
+    // AutoNav panel: provides GUI to assemble and periodically send AutoNav frames
+    autoNavPanel = new AutoNavPanel(&serialPort, this);
+    ui->tabWidget->insertTab(6, autoNavPanel, "AutoNav");
     ui->tabWidget->setCurrentIndex(0);
     auto tbPortControl = portControl.toolBar();
     addToolBar(tbPortControl);
