@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(serialplot VERSION 0.13.0 LANGUAGES CXX)
+project(serialplot VERSION 0.14.0 LANGUAGES CXX)
 
 set(PROGRAM_NAME ${CMAKE_PROJECT_NAME} CACHE STRING "Output program name")
 set(PROGRAM_DISPLAY_NAME "SerialPlot" CACHE STRING "Display name (menus etc) of the program")
@@ -121,6 +121,7 @@ qt_add_executable(${PROGRAM_NAME} WIN32
   src/datatextview.cpp
   src/rawdataview.cpp
   src/bpslabel.cpp
+  src/autonavpanel.cpp
   misc/windows_icon.rc
   ${RES_FILES}
   )
